@@ -2,6 +2,8 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PRG.Proof360.Integrations.Api", "PRG.Proof360.Integrations.Api\PRG.Proof360.Integrations.Api.csproj", "{DDCCFF81-80BF-4E78-BE89-F29EF9B423FF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PRG.Proof360.Integrations.XUnitTesting", "PRG.Proof360.Integrations.XUnitTesting\PRG.Proof360.Integrations.XUnitTesting.csproj", "{A4A61DB2-564D-43B6-A36D-58031E68EE2A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -12,5 +14,9 @@ Global
 		{DDCCFF81-80BF-4E78-BE89-F29EF9B423FF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DDCCFF81-80BF-4E78-BE89-F29EF9B423FF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DDCCFF81-80BF-4E78-BE89-F29EF9B423FF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A4A61DB2-564D-43B6-A36D-58031E68EE2A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A4A61DB2-564D-43B6-A36D-58031E68EE2A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A4A61DB2-564D-43B6-A36D-58031E68EE2A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A4A61DB2-564D-43B6-A36D-58031E68EE2A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

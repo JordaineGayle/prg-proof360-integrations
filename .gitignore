@@ -132,3 +132,7 @@ reference/
 *.nuget.targets
 **/packages/
 !**/packages/build/
+# Submission staging (Prompt 11+) — keep tracked
+!docs/packages/
+!docs/packages/**
+docs/packages/*.print.html

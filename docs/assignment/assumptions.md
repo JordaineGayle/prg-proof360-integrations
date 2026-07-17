@@ -1,6 +1,6 @@
 # Assumptions and Constraints
 
-Status: Draft for approval (Prompt 00)  
+Status: Active baseline (Prompt 11)  
 Delivery model: **at-least-once** with **idempotent effects**. Never exactly-once.
 
 Connector infrastructure records (`ProviderIdentityLink`, `InboxMessage`, `OutboxMessage`, `AuditEvent`, `ConnectorState`, checkpoints) are **not** Proof360 canonical entities. They live outside the canonical domain namespace.

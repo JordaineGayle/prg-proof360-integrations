@@ -194,4 +194,4 @@ Idempotency key: `fieldflow:{instance}:{jobId}:dispatch:v1`. Ambiguous POST reco
 
 ## Current status
 
-Prompts 05–10 landed: inbound/outbound, resilience/health, audit/replay/observability, full suite hardening, and filled requirements traceability. Architecture/Leadership PDFs and ZIP packaging remain Prompt 11–12.
+Prompts 05–11 landed: connector behaviors, full suite, and submission docs under `docs/packages/` (`01_Architecture.pdf`, `03_README.md`, `04_Leadership_Recommendation.pdf`, `05_AI_and_Scope_Notes.md`). ZIP packaging remains Prompt 12.

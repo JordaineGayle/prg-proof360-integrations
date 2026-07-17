@@ -1,6 +1,6 @@
 # Phase 1 Scope
 
-Status: Draft for approval (Prompt 00)
+Status: Accepted for Phase 1 prototype (updated Prompt 11)
 
 ## 1. In-scope capabilities
 

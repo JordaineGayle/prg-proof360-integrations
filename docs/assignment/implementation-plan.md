@@ -7,7 +7,7 @@ Delivery semantics: **at-least-once + idempotent effects** (never exactly-once).
 
 - Modular monolith on **.NET 10** with canonical models, FieldFlow mock, capability ports, ACL mappers, SOT docs, inbound sync/webhooks, outbound outbox, resilience/health, audit/replay/metrics.
 - `Result<TSuccess, TFailure>`, typed failures/dispositions, RFC 7807 Problem Details, and outer exception middleware.
-- Full automated suite + filled `docs/assignment/requirements-traceability.md`; Architecture/Leadership PDFs and ZIP packaging remain Prompt 11–12.
+- Full automated suite + filled traceability; submission docs in `docs/packages/` (Prompt 11). ZIP packaging remains Prompt 12.
 
 ## Phases, exit gates, and evidence
 
@@ -45,6 +45,5 @@ Delivery semantics: **at-least-once + idempotent effects** (never exactly-once).
 
 ## Remaining kit prompts
 
-- Prompt 11: Architecture + Leadership PDFs, AI/scope notes
 - Prompt 12: secret scan, ZIP packaging, final DoD
 - Prompt 13 (optional): short demo

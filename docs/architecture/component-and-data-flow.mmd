@@ -1,0 +1,48 @@
+%% Component and data-flow topology (Phase 1)
+%% flowchart for IDE Mermaid preview compatibility.
+
+flowchart LR
+    subgraph external [External]
+        mock[FieldFlow Mock :5210]
+        ops[Operator / Demo client]
+    end
+
+    subgraph apiHost [Connector API :5203]
+        endpoints[HTTP endpoints]
+        workers[In-process poll / inbox / outbox workers]
+        health[Live / Ready / Connector health]
+    end
+
+    subgraph app [Application]
+        receive[ReceiveProviderEvent]
+        apply[ApplyContractor / ApplyWorkOrder]
+        dispatch[QueueJobDispatch / ProcessOutbox]
+        disposition[FailureDispositionPolicy]
+    end
+
+    subgraph adapter [FieldFlow ACL]
+        client[FieldFlowClient + resilience pipeline]
+        mappers[DTO mappers + webhook verifier]
+    end
+
+    subgraph store [Infrastructure SQLite]
+        canonical[(Vendor / Job)]
+        sidecar[(Identity / Inbox / Outbox / Audit)]
+    end
+
+    ops --> endpoints
+    endpoints --> receive
+    endpoints --> dispatch
+    workers --> receive
+    workers --> apply
+    workers --> dispatch
+    receive --> sidecar
+    apply --> canonical
+    apply --> sidecar
+    apply --> disposition
+    dispatch --> sidecar
+    dispatch --> client
+    client --> mock
+    mappers --> client
+    health --> sidecar
+    health --> client

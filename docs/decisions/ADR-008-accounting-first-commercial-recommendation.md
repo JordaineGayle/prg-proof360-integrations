@@ -1,15 +1,15 @@
 # ADR-008: Accounting-first commercial recommendation
 
-- Status: **Proposed**
+- Status: **Accepted**
 - Date: 2026-07-17
 
 ## Context
 
 Leadership deliverable requires choosing the first integration investment beyond (or sequenced against) field service. Decision must be assumption-transparent with measurable MVP outcomes and ROI methodology — not invented precision.
 
-## Decision (proposed)
+## Decision
 
-Recommend **Accounting** as the first commercial integration focus for finance operations (AP/AR) and implementation teams. MVP: invoice/bill creation and status sync, reconciliation, exception queue — **no automatic payment**. Field service connector remains the technical proving ground for reusable reliability patterns.
+Recommend **Accounting** as the first commercial integration focus for finance operations (AP/AR) and implementation teams, **subject to discovery validation**. MVP: invoice/bill creation and status sync, reconciliation, exception queue — **no automatic payment**. Field service connector remains the technical proving ground for reusable reliability patterns. Written memo: `docs/leadership/leadership-recommendation.md` → `docs/packages/04_Leadership_Recommendation.pdf`.
 
 ## Alternatives (why not first)
 

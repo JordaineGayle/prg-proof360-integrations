@@ -38,7 +38,8 @@ Derived from kit `04_DEFINITION_OF_DONE.md`. Checkboxes reflect Prompt 10 automa
 
 - [x] Four test projects; Release TRX under `artifacts/test-results/`
 - [x] Deterministic time/probes preferred over arbitrary sleeps
-- [ ] Architecture/Leadership PDFs and final packaging (Prompt 11–12)
+- [x] Architecture/Leadership PDFs + AI notes (Prompt 11 → `docs/packages/`)
+- [ ] Final ZIP packaging + secret scan (Prompt 12)
 
 ## Required Prompt 10 commands
 

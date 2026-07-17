@@ -96,9 +96,36 @@ Desktop.ini
 appsettings.*.local.json
 *.pfx
 *.key
+*.pem
+*.p12
 .env
 .env.*
 !.env.example
+secrets.json
+**/secrets/
+
+## Local databases and runtime state
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.mdf
+*.ldf
+
+## Logs and temp renders
+*.log
+logs/
+**/logs/
+artifacts/test-results/
+artifacts/documents/~$*
+*.tmp.pdf
+*.docx~
+~$*
+
+## Kit / local reference (never package)
+reference/
+**/assignment.pdf
 
 ## NuGet
 *.nuget.props

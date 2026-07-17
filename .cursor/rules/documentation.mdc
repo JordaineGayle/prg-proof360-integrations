@@ -1,0 +1,67 @@
+---
+description: Architecture, README, ADR, leadership, and submission-document rules
+globs:
+  - "**/*.md"
+  - "**/*.mmd"
+alwaysApply: false
+---
+
+# Documentation rules
+
+## General style
+
+- Write for an engineering and leadership reviewer, not as an academic essay.
+- Lead with the decision and consequence.
+- State assumptions separately from facts supplied by the assignment.
+- Use tables for mappings, source-of-truth rules, failure classification, and acceptance criteria.
+- Use small diagrams for component flow and the two main event sequences.
+- Keep terminology consistent: Proof360 canonical entity, provider DTO, identity link, inbox, outbox, audit event, dead-letter state.
+- Never claim behavior that tests or code do not demonstrate.
+
+## Architecture document
+
+Must cover:
+
+- Overall component and data flow.
+- Shared connector logic versus FieldFlow-specific behavior.
+- Contractor-to-Vendor and WorkOrder-to-Job mapping.
+- Field-level and status-level ownership.
+- Internal/external IDs, match keys, and deduplication.
+- Webhook verification, ordering, idempotency, retry, replay, and dead-letter handling.
+- Circuit breaker and degraded mode.
+- Audit and correlation requirements.
+- Monitoring, health, alerting, and user-visible status.
+- Authentication and secrets.
+- Phase 1, approval gates, and deferred capabilities.
+- At least five observable acceptance criteria; target ten.
+- Explicit tradeoffs and production evolution.
+
+## ADRs
+
+Each ADR uses:
+
+1. Status
+2. Context
+3. Decision
+4. Alternatives considered
+5. Consequences
+6. Production evolution
+
+## README
+
+The submission README must include exact prerequisites, setup, configuration, run, demo, test, reset, troubleshooting, assumptions, limitations, technology choices, design decisions, endpoint examples, and an architecture-document index.
+
+## Leadership recommendation
+
+Recommend Accounting first, subject to discovery data. Include target user, business value, delivery sequence, dependencies, risks, MVP, success measures, ROI equation, reasons the other four options are not first, and information needed before final commitment. Keep automatic payments outside MVP and require human approval for high-risk financial actions.
+
+## AI and scope notes
+
+State AI use honestly. Distinguish AI-assisted drafting/review from Jordaine's engineering decisions. Explain validation through assignment traceability, code review, automated tests, build results, and design constraints. Include intentional Phase 1 exclusions and second-provider evolution.
+
+## PDF quality
+
+- Generate PDFs from the reviewed Markdown source.
+- Verify every rendered page visually.
+- Check for clipped diagrams, split tables, broken glyphs, page numbering, readable font size, and consistent headings.
+- Keep source Markdown in the working repository but package only the required PDFs and allowed prototype docs.

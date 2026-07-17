@@ -1,0 +1,67 @@
+---
+description: .NET architecture, coding, persistence, and documentation rules
+globs:
+  - "**/*.cs"
+  - "**/*.csproj"
+  - "**/*.props"
+alwaysApply: false
+---
+
+# .NET architecture rules
+
+## Language and build settings
+
+- Target .NET 10 (approved environment choice; kit originally specified .NET 8).
+- Enable nullable reference types, implicit usings, deterministic builds, and analyzers.
+- Treat warnings as errors for project code; explicitly document any justified suppression.
+- Use central package management and pin package versions.
+- Use `TimeProvider` or an injected clock; do not hide `DateTime.UtcNow` throughout business logic.
+- Accept `CancellationToken` on async I/O and worker operations.
+- Use async APIs end to end; do not block on tasks.
+
+## Module boundaries
+
+- Domain contains canonical representations, value objects, and pure policies only.
+- Core contains provider-neutral connector contracts and infrastructure metadata models.
+- Application owns use cases, orchestration, transaction boundaries, and authoritative decisions.
+- FieldFlow contains provider DTOs, mappings, auth/signing, HTTP behavior, and status vocabulary.
+- Infrastructure contains EF Core, workers, logging, health mechanics, and technical adapters.
+- API contains endpoint definitions, validation, middleware, and dependency composition only.
+- Do not make Domain or Application depend on ASP.NET Core, EF Core, Polly, or FieldFlow DTOs.
+
+Prefer capability-based interfaces (`IContractorSource`, `IWorkOrderDispatcher`) to one large `IProvider` interface. Do not create an interface for a type merely to satisfy a pattern; create seams where replacement or isolated testing matters.
+
+## Data integrity
+
+- Configure database uniqueness constraints for event IDs, provider external IDs, and outbox idempotency keys.
+- Use explicit transactions for canonical mutation plus identity/audit/inbox completion.
+- Use optimistic concurrency or an atomic compare-and-update for worker claims and versioned state.
+- Do not use check-then-insert without a database constraint.
+- Store timestamps in UTC and name them clearly.
+- Keep raw provider payloads out of canonical tables.
+
+## HTTP and resilience
+
+- Use typed `HttpClient` through `IHttpClientFactory`.
+- Use a named resilience pipeline with explicit retryable outcomes.
+- Honour `Retry-After` for 429.
+- Do not retry validation/authentication 4xx responses.
+- Keep timeouts, retry counts, and circuit settings configurable and overridable in tests.
+- Preserve a stable correlation ID across retries.
+- Use stable idempotency keys for outbound writes.
+- Reconcile an ambiguous POST result before issuing a second logical write.
+
+## Error handling
+
+- Use small stable error codes/categories for validation, dependency, transient provider, rate limit, authentication, ordering, and unexpected failures.
+- Do not use exceptions for normal duplicate or stale-event behavior.
+- Convert endpoint failures to RFC 7807 Problem Details without sensitive internals.
+- Preserve the original exception as structured internal telemetry where safe.
+
+## Comments and documentation
+
+- Add useful XML documentation to every public type and public member.
+- Explain why transaction boundaries, version comparisons, retry exclusions, and security checks exist.
+- Document provider assumptions beside DTOs and mapping tables.
+- Do not add comments that only restate the syntax.
+- Keep methods short enough that the algorithm is visible without explanatory essays.

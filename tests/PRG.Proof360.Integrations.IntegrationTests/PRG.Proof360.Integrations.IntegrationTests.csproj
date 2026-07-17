@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\PRG.Proof360.Integrations.Api\PRG.Proof360.Integrations.Api.csproj" />
+    <ProjectReference Include="..\..\src\PRG.FieldFlow.Mock\PRG.FieldFlow.Mock.csproj" />
+    <ProjectReference Include="..\..\src\PRG.Proof360.Integrations.Infrastructure\PRG.Proof360.Integrations.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\PRG.Proof360.Integrations.Domain\PRG.Proof360.Integrations.Domain.csproj" />
+    <ProjectReference Include="..\..\src\PRG.Proof360.Integrations.Core\PRG.Proof360.Integrations.Core.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,61 @@
+---
+description: Non-negotiable PRG assignment constraints and agent workflow
+alwaysApply: true
+---
+
+# PRG assignment guardrails
+
+You are implementing Jordaine Gayle's PRG Practical Integration Assignment for the API Growth & Revenue Integration Lead role.
+
+## Before changing code
+
+1. Inspect the relevant existing files, tests, and documentation.
+2. Restate the current task, assumptions, and files expected to change.
+3. Confirm that the change stays within Phase 1 and the current prompt.
+4. Prefer the smallest coherent implementation that proves the required behavior.
+
+## Canonical schema boundary
+
+The only Proof360 canonical entities are `Vendor`, `Job`, and `Transcript`.
+
+- Preserve every supplied canonical field name exactly.
+- Never add a canonical entity or field.
+- FieldFlow `Contractor`, `WorkOrder`, `Appointment`, `Location`, `Invoice`, and `PaymentStatus` are provider concepts and stay in the FieldFlow adapter.
+- Provider identity and lineage belong in connector-side infrastructure metadata.
+- Never store provider IDs as `vendor_id` or `job_id`.
+- Never use `ai_json`, `notes_scope`, `rationale`, or another canonical field as an arbitrary payload container.
+- Do not populate AI fields unless an actual AI process produced and validated the value.
+
+## Reliability invariants
+
+- Model delivery as at-least-once; never claim exactly-once.
+- Enforce idempotency and deduplication with database constraints and transactions.
+- Polling and webhooks must converge on the same application processing path.
+- Verify webhook authenticity before accepting an event for processing.
+- Durably record a valid webhook event before acknowledging it.
+- Reject stale event versions and invalid status regressions as audited no-ops.
+- Do not hold database transactions open across HTTP requests.
+- Do not blindly retry non-idempotent POST operations.
+- Honour `Retry-After` and keep one clear HTTP retry owner.
+- An unknown contractor is a dependency to resolve, not permission to invent a Vendor.
+- A provider outage degrades the connector, not the core application.
+
+## Security and privacy
+
+- Use mock data only.
+- Read credentials from configuration/environment; never commit values.
+- Do not log raw authorization headers, signatures, webhook bodies, phone numbers, or email addresses.
+- Use structured sanitized errors and constant-time signature comparison.
+- Do not expose stack traces or secret material through health endpoints.
+
+## Completion behavior
+
+For every prompt:
+
+1. Implement only the stated scope.
+2. Add or update automated tests for behavior changes.
+3. Add XML documentation to public APIs and comments explaining non-obvious decisions.
+4. Update relevant docs/ADRs when a design decision changes.
+5. Run formatting, build, and relevant tests.
+6. Report files changed, decisions, commands, results, and remaining limitations.
+7. Stop and report a blocker if required context is absent; do not silently invent conflicting semantics.

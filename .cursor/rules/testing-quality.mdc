@@ -1,0 +1,59 @@
+---
+description: Automated test quality and evidence requirements
+globs:
+  - "tests/**/*.cs"
+  - "src/**/*.cs"
+alwaysApply: false
+---
+
+# Testing and quality rules
+
+## Test design
+
+- Test externally observable behavior and invariants, not private implementation details.
+- Use Arrange/Act/Assert with descriptive test names: `Given_When_Then` or an equally readable convention.
+- Keep tests deterministic by injecting time, IDs, retry timing, and failure behavior.
+- Never use real sleeps to wait for background processing. Expose deterministic worker execution or use bounded polling helpers with cancellation.
+- Use independent database state per test.
+- Make HTTP failure modes deterministic through the local mock or a controlled handler.
+- Do not mock mapping policies that are the subject of the test.
+
+## Required coverage categories
+
+- Exact canonical schema field contracts.
+- Architecture dependency rules.
+- Contractor and WorkOrder mapping.
+- Provider status mapping and transition policy.
+- Unknown additive optional fields.
+- Required-field validation.
+- Repeated polling deduplication.
+- Duplicate and concurrent webhook delivery.
+- Stale and out-of-order events.
+- Unknown-contractor dependency deferral and replay.
+- 429/Retry-After, 500, timeout, and permanent 4xx behavior.
+- Circuit open, short-circuit, half-open, and recovery.
+- Outbound idempotency and ambiguous-result reconciliation.
+- Audit/correlation evidence and PII redaction.
+- Health transitions and dead-letter counts.
+- Invalid webhook signature and stale signature timestamp.
+
+## Assertions
+
+- Assert canonical row counts and values.
+- Assert provider call counts when testing retry or circuit behavior.
+- Assert audit outcomes and stable correlation identifiers.
+- Assert no canonical mutation on invalid, duplicate, stale, or unauthenticated input.
+- Assert database constraints under concurrency rather than relying only on sequential tests.
+- Assert health results contain no raw exception, secret, or PII.
+
+## Quality gates
+
+Before completing a prompt, run:
+
+```bash
+dotnet format --verify-no-changes
+dotnet build --configuration Release
+dotnet test --configuration Release --no-build
+```
+
+During development, relevant filtered test commands are acceptable, but the full suite is required before final packaging.

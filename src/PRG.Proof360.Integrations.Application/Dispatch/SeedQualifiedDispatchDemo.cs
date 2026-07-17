@@ -53,53 +53,71 @@ public sealed class SeedQualifiedDispatchDemoHandler
                 new SeedDispatchDemoOutcome(jobId, vendorId, Created: false));
         }
 
-        var vendor = new Vendor
-        {
-            VendorId = vendorId,
-            ComplianceId = "CMP-DEMO",
-            LicenseNumber = "LIC-DEMO",
-            LicenseExpiry = new DateOnly(2030, 1, 1),
-            InsurancePolicy = "INS-DEMO",
-            InsuranceExpiry = new DateOnly(2030, 1, 1),
-            InsuranceCoverage = "2000000 CAD",
-            WcbNumber = "WCB-DEMO",
-            Status = VendorStatuses.Approved,
-            Rationale = "Demo seed: Proof360-approved for local dispatch.",
-            CreatedAt = _clock.UtcNow
-        };
+        // Dedicated demo contractor id — must not collide with mock fixture ctr-1001 after sync.
+        const string demoContractorExternalId = "ctr-demo-dispatch";
 
-        var job = new Job
+        var existingVendor = await _canonical.FindVendorAsync(vendorId, cancellationToken);
+        if (existingVendor is null)
         {
-            JobId = jobId,
-            Source = JobSources.Proof360,
-            CustomerName = "Demo Customer",
-            CustomerPhone = "555-0100",
-            AddressStreet = "100 Demo Street",
-            AddressCity = "Calgary",
-            AddressPostal = "T2P1J9",
-            ServiceType = "plumbing",
-            WindowStart = _clock.UtcNow.AddDays(1),
-            WindowEnd = _clock.UtcNow.AddDays(1).AddHours(2),
-            NotesScope = "Local demo dispatch seed",
-            Status = JobStatuses.Qualified,
-            AssignedVendorId = vendorId
-        };
+            await _canonical.AddVendorAsync(
+                new Vendor
+                {
+                    VendorId = vendorId,
+                    ComplianceId = "CMP-DEMO",
+                    LicenseNumber = "LIC-DEMO",
+                    LicenseExpiry = new DateOnly(2030, 1, 1),
+                    InsurancePolicy = "INS-DEMO",
+                    InsuranceExpiry = new DateOnly(2030, 1, 1),
+                    InsuranceCoverage = "2000000 CAD",
+                    WcbNumber = "WCB-DEMO",
+                    Status = VendorStatuses.Approved,
+                    Rationale = "Demo seed: Proof360-approved for local dispatch.",
+                    CreatedAt = _clock.UtcNow
+                },
+                cancellationToken);
+        }
 
-        await _canonical.AddVendorAsync(vendor, cancellationToken);
-        await _canonical.AddJobAsync(job, cancellationToken);
-        await _store.AddIdentityLinkAsync(
-            new ProviderIdentityLink
+        await _canonical.AddJobAsync(
+            new Job
             {
-                Id = Guid.NewGuid(),
-                ProviderName = ProviderNames.FieldFlow,
-                ProviderInstanceId = _capabilities.ProviderInstanceId,
-                ExternalEntityType = ExternalEntityTypes.Contractor,
-                ExternalId = "ctr-1001",
-                CanonicalEntityType = CanonicalEntityTypes.Vendor,
-                CanonicalId = vendorId,
-                LastAppliedAt = _clock.UtcNow
+                JobId = jobId,
+                Source = JobSources.Proof360,
+                CustomerName = "Demo Customer",
+                CustomerPhone = "555-0100",
+                AddressStreet = "100 Demo Street",
+                AddressCity = "Calgary",
+                AddressPostal = "T2P1J9",
+                ServiceType = "plumbing",
+                WindowStart = _clock.UtcNow.AddDays(1),
+                WindowEnd = _clock.UtcNow.AddDays(1).AddHours(2),
+                NotesScope = "Local demo dispatch seed",
+                Status = JobStatuses.Qualified,
+                AssignedVendorId = vendorId
             },
             cancellationToken);
+
+        var contractorLink = await _store.FindIdentityByExternalAsync(
+            _capabilities.ProviderInstanceId,
+            ExternalEntityTypes.Contractor,
+            demoContractorExternalId,
+            cancellationToken);
+        if (contractorLink is null)
+        {
+            await _store.AddIdentityLinkAsync(
+                new ProviderIdentityLink
+                {
+                    Id = Guid.NewGuid(),
+                    ProviderName = ProviderNames.FieldFlow,
+                    ProviderInstanceId = _capabilities.ProviderInstanceId,
+                    ExternalEntityType = ExternalEntityTypes.Contractor,
+                    ExternalId = demoContractorExternalId,
+                    CanonicalEntityType = CanonicalEntityTypes.Vendor,
+                    CanonicalId = vendorId,
+                    LastAppliedAt = _clock.UtcNow
+                },
+                cancellationToken);
+        }
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result<SeedDispatchDemoOutcome, IntegrationFailure>.Ok(

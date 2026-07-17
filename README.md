@@ -167,10 +167,11 @@ Recommended demo order: sync contractors first, then work orders (worker does th
 # Mock helper signs with FieldFlowMock__WebhookHmacSecret (must match FieldFlow__WebhookHmacSecret)
 curl -s -X POST http://localhost:5210/_test/webhooks/send \
   -H 'Content-Type: application/json' \
-  -d '{"targetUrl":"http://localhost:5203/webhooks/events","workOrderId":"wo-2001","status":"scheduled","entityVersion":2}'
+  -d '{"targetUrl":"http://localhost:5203/webhooks/events","workOrderId":"wo-2001","status":"scheduled","entityVersion":2,"eventId":"evt-demo-dup-1"}'
+# Repeat the same body to demonstrate duplicate 202 / one effect
 ```
 
-Replay window: `FieldFlow__WebhookTimestampSkewSeconds` (default 300).
+Replay window: `FieldFlow__WebhookTimestampSkewSeconds` (default 300). Use launch profiles (Development) for `/_demo/seed-qualified-dispatch`.
 
 ## Outbound dispatch (Prompt 07)
 
@@ -194,4 +195,4 @@ Idempotency key: `fieldflow:{instance}:{jobId}:dispatch:v1`. Ambiguous POST reco
 
 ## Current status
 
-Prompts 05–11 landed: connector behaviors, full suite, and submission docs under `docs/packages/` (`01_Architecture.pdf`, `03_README.md`, `04_Leadership_Recommendation.pdf`, `05_AI_and_Scope_Notes.md`). ZIP packaging remains Prompt 12.
+Prompts 05–12 complete. Submission ZIP: `docs/packages/Jordaine_Gayle_PRG_Integration_Assignment.zip` (also under `artifacts/submission/`). Regenerate with `./scripts/package-submission.sh`.

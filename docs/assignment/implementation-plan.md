@@ -45,5 +45,4 @@ Delivery semantics: **at-least-once + idempotent effects** (never exactly-once).
 
 ## Remaining kit prompts
 
-- Prompt 12: secret scan, ZIP packaging, final DoD
-- Prompt 13 (optional): short demo
+- Prompt 13 (optional): short demo video ≤ 5 minutes

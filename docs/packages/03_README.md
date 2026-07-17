@@ -5,6 +5,9 @@
 **Solution:** `PRG.Proof360.Integrations`  
 **Runtime:** .NET **10** (approved deviation from kit .NET 8; only SDK 10 available in the build environment)
 
+**ZIP layout:** Top-level artifacts (`01_Architecture.pdf`, this README, leadership PDF, AI notes) sit beside `02_Prototype/`.  
+All `dotnet` / `curl` commands below assume the working directory is **`02_Prototype/`** (the solution root). Paths are relative to that folder.
+
 ---
 
 ## Purpose and demonstrated behaviors
@@ -120,10 +123,14 @@ dotnet ef migrations add <Name> \
 
 ### Run mock + connector
 
+Use launch profiles (sets Development + matching `replace-me` secrets). Run each in its own terminal from `02_Prototype/`:
+
 ```bash
 dotnet run --project src/PRG.FieldFlow.Mock --launch-profile http
 dotnet run --project src/PRG.Proof360.Integrations.Api --launch-profile http
 ```
+
+Demo seed and admin replay require `ASPNETCORE_ENVIRONMENT=Development` (provided by the API launch profile).
 
 ### Demo sequence
 
@@ -138,10 +145,13 @@ curl -s http://localhost:5203/connectors/fieldflow/health
 curl -s -X POST http://localhost:5203/sync/contractors
 curl -s -X POST http://localhost:5203/sync/work-orders
 
-# Webhook (mock signs with shared secret)
+# Webhook (mock signs with shared secret). Reuse eventId to prove duplicate idempotency.
 curl -s -X POST http://localhost:5210/_test/webhooks/send \
   -H 'Content-Type: application/json' \
-  -d '{"targetUrl":"http://localhost:5203/webhooks/events","workOrderId":"wo-2001","status":"scheduled","entityVersion":2}'
+  -d '{"targetUrl":"http://localhost:5203/webhooks/events","workOrderId":"wo-2001","status":"scheduled","entityVersion":2,"eventId":"evt-demo-dup-1"}'
+curl -s -X POST http://localhost:5210/_test/webhooks/send \
+  -H 'Content-Type: application/json' \
+  -d '{"targetUrl":"http://localhost:5203/webhooks/events","workOrderId":"wo-2001","status":"scheduled","entityVersion":2,"eventId":"evt-demo-dup-1"}'
 
 # Outbound
 curl -s -X POST http://localhost:5203/_demo/seed-qualified-dispatch

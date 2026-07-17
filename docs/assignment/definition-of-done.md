@@ -32,14 +32,14 @@ Derived from kit `04_DEFINITION_OF_DONE.md`. Checkboxes reflect Prompt 10 automa
 
 - [x] HMAC over raw bytes + skew window; invalid webhook mutates nothing
 - [x] Secrets from config; audit/health/logs redact markers
-- [ ] Secret scan + ZIP inspection (Prompt 12)
+- [x] Secret scan + ZIP inspection (Prompt 12)
 
 ## 5. Testing and code quality
 
 - [x] Four test projects; Release TRX under `artifacts/test-results/`
 - [x] Deterministic time/probes preferred over arbitrary sleeps
 - [x] Architecture/Leadership PDFs + AI notes (Prompt 11 → `docs/packages/`)
-- [ ] Final ZIP packaging + secret scan (Prompt 12)
+- [x] Final ZIP packaging + secret scan (Prompt 12)
 
 ## Required Prompt 10 commands
 

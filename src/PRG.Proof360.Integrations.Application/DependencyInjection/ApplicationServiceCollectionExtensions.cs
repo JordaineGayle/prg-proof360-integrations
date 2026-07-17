@@ -7,6 +7,8 @@ using PRG.Proof360.Integrations.Application.Errors;
 using PRG.Proof360.Integrations.Application.Health;
 using PRG.Proof360.Integrations.Application.Inbox;
 using PRG.Proof360.Integrations.Application.Mapping;
+using PRG.Proof360.Integrations.Application.Observability;
+using PRG.Proof360.Integrations.Application.Replay;
 using PRG.Proof360.Integrations.Application.WorkOrders;
 using PRG.Proof360.Integrations.Domain.Policies;
 
@@ -28,6 +30,7 @@ public static class ApplicationServiceCollectionExtensions
         services.Configure<InboundSyncOptions>(configuration.GetSection(InboundSyncOptions.SectionName));
         services.Configure<OutboundDispatchOptions>(configuration.GetSection(OutboundDispatchOptions.SectionName));
         services.Configure<ConnectorHealthOptions>(configuration.GetSection(ConnectorHealthOptions.SectionName));
+        services.Configure<AdminReplayOptions>(configuration.GetSection(AdminReplayOptions.SectionName));
         RegisterCore(services);
         return services;
     }
@@ -41,6 +44,7 @@ public static class ApplicationServiceCollectionExtensions
         services.Configure<InboundSyncOptions>(_ => { });
         services.Configure<OutboundDispatchOptions>(_ => { });
         services.Configure<ConnectorHealthOptions>(_ => { });
+        services.Configure<AdminReplayOptions>(_ => { });
         RegisterCore(services);
         return services;
     }
@@ -56,6 +60,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<WorkOrderToJobMapper>();
         services.AddSingleton<FailureDispositionPolicy>();
         services.AddSingleton<ConnectorHealthStatusPolicy>();
+        services.AddScoped<StructuredAuditWriter>();
 
         services.AddScoped<ReceiveProviderEventHandler>();
         services.AddScoped<ReceiveWebhookEventHandler>();
@@ -68,5 +73,6 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ProcessOutboxMessageHandler>();
         services.AddScoped<SeedQualifiedDispatchDemoHandler>();
         services.AddScoped<GetConnectorHealthHandler>();
+        services.AddScoped<ReplayDeadLetterHandler>();
     }
 }

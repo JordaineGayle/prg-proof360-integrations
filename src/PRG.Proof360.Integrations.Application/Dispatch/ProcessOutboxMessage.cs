@@ -3,8 +3,10 @@ using Microsoft.Extensions.Options;
 using PRG.Proof360.Integrations.Application.Abstractions.Persistence;
 using PRG.Proof360.Integrations.Application.Abstractions.Time;
 using PRG.Proof360.Integrations.Application.Errors;
+using PRG.Proof360.Integrations.Application.Observability;
 using PRG.Proof360.Integrations.Application.Outcomes;
 using PRG.Proof360.Integrations.Core.Integration;
+using PRG.Proof360.Integrations.Core.Observability;
 using PRG.Proof360.Integrations.Core.Providers;
 using PRG.Proof360.Integrations.Core.Providers.Capabilities;
 using PRG.Proof360.Integrations.Core.Providers.Contracts;
@@ -48,6 +50,7 @@ public sealed class ProcessOutboxMessageHandler
     private readonly IWorkOrderDispatcher _dispatcher;
     private readonly IWorkOrderReconciler _reconciler;
     private readonly FailureDispositionPolicy _dispositionPolicy;
+    private readonly StructuredAuditWriter _audit;
     private readonly OutboundDispatchOptions _options;
     private readonly IClock _clock;
 
@@ -59,6 +62,7 @@ public sealed class ProcessOutboxMessageHandler
         IWorkOrderDispatcher dispatcher,
         IWorkOrderReconciler reconciler,
         FailureDispositionPolicy dispositionPolicy,
+        StructuredAuditWriter audit,
         IOptions<OutboundDispatchOptions> options,
         IClock clock)
     {
@@ -68,6 +72,7 @@ public sealed class ProcessOutboxMessageHandler
         _dispatcher = dispatcher;
         _reconciler = reconciler;
         _dispositionPolicy = dispositionPolicy;
+        _audit = audit;
         _options = options.Value;
         _clock = clock;
     }
@@ -330,20 +335,24 @@ public sealed class ProcessOutboxMessageHandler
                 return await PersistDeadLetterAsync(message, failure, attention.ReasonCode, cancellationToken);
 
             case FailureDisposition.RetryAt retry:
+                AppendFailure(message, failure);
                 message.State = OutboxMessageStates.Pending;
                 message.NextAttemptAt = retry.At;
                 message.ErrorCategory = failure.Category.ToString();
                 message.ErrorMessage = failure.SafeMessage;
                 message.RowVersion += 1;
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
+                ConnectorTelemetry.RecordOutbox("retried");
                 return Result<ProcessOutboxOutcome, IntegrationFailure>.Ok(
                     new ProcessOutboxOutcome.RetryScheduled(message.Id, retry.At));
 
             default:
+                AppendFailure(message, failure);
                 message.State = OutboxMessageStates.Pending;
                 message.NextAttemptAt = _clock.UtcNow.AddSeconds(30);
                 message.RowVersion += 1;
                 await _unitOfWork.SaveChangesAsync(cancellationToken);
+                ConnectorTelemetry.RecordOutbox("retried");
                 return Result<ProcessOutboxOutcome, IntegrationFailure>.Ok(
                     new ProcessOutboxOutcome.RetryScheduled(message.Id, message.NextAttemptAt.Value));
         }
@@ -355,12 +364,32 @@ public sealed class ProcessOutboxMessageHandler
         string reasonCode,
         CancellationToken cancellationToken)
     {
+        var causationId = CorrelationIdRules.NewId();
+        AppendFailure(message, failure, causationId);
         message.State = OutboxMessageStates.DeadLettered;
         message.NextAttemptAt = null;
         message.ErrorCategory = failure.Category.ToString();
         message.ErrorMessage = failure.SafeMessage;
         message.RowVersion += 1;
+        await _audit.WriteAsync(
+            new AuditWriteRequest
+            {
+                Operation = AuditOperations.DeadLettered,
+                Result = "dead_lettered",
+                Direction = AuditDirections.Outbound,
+                CorrelationId = ExtractCorrelation(message),
+                CausationId = causationId,
+                ProviderName = message.ProviderName,
+                ProviderInstanceId = message.ProviderInstanceId,
+                CanonicalEntityType = message.CanonicalEntityType,
+                CanonicalId = message.CanonicalId,
+                Attempt = message.AttemptCount,
+                ErrorCategory = failure.Category.ToString()
+            },
+            cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+        ConnectorTelemetry.RecordDeadLetter("outbox");
+        ConnectorTelemetry.RecordOutbox("dead_lettered");
         return Result<ProcessOutboxOutcome, IntegrationFailure>.Ok(
             new ProcessOutboxOutcome.DeadLettered(message.Id, reasonCode));
     }
@@ -396,15 +425,16 @@ public sealed class ProcessOutboxMessageHandler
             return Result<ProcessOutboxOutcome, IntegrationFailure>.Fail(failure);
         }
 
-        message.State = OutboxMessageStates.DeadLettered;
-        message.NextAttemptAt = null;
-        message.ErrorCategory = failure.Category.ToString();
-        message.ErrorMessage = failure.SafeMessage;
-        message.RowVersion += 1;
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-        return Result<ProcessOutboxOutcome, IntegrationFailure>.Ok(
-            new ProcessOutboxOutcome.DeadLettered(message.Id, failure.Code));
+        return await PersistDeadLetterAsync(message, failure, failure.Code, cancellationToken);
     }
+
+    private void AppendFailure(OutboxMessage message, IntegrationFailure failure, string? causationId = null) =>
+        message.FailureHistoryJson = FailureHistory.Append(
+            message.FailureHistoryJson,
+            failure,
+            message.AttemptCount,
+            _clock.UtcNow,
+            causationId);
 
     private static string? ExtractCorrelation(OutboxMessage message)
     {

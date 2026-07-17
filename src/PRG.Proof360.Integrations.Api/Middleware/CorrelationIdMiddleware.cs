@@ -1,7 +1,9 @@
+using PRG.Proof360.Integrations.Application.Observability;
+
 namespace PRG.Proof360.Integrations.Api.Middleware;
 
 /// <summary>
-/// Ensures every request has a correlation id for logs and Problem Details.
+/// Ensures every request has a validated correlation id for logs, audit, and Problem Details.
 /// </summary>
 public sealed class CorrelationIdMiddleware
 {
@@ -19,10 +21,8 @@ public sealed class CorrelationIdMiddleware
     /// <summary>Invokes the middleware.</summary>
     public async Task InvokeAsync(HttpContext context)
     {
-        var correlationId = context.Request.Headers.TryGetValue(HeaderName, out var values) &&
-                            !string.IsNullOrWhiteSpace(values.ToString())
-            ? values.ToString()
-            : Guid.NewGuid().ToString("N");
+        context.Request.Headers.TryGetValue(HeaderName, out var values);
+        var correlationId = CorrelationIdRules.Resolve(values.ToString());
 
         context.Items[ItemKey] = correlationId;
         context.Response.Headers[HeaderName] = correlationId;
@@ -33,5 +33,5 @@ public sealed class CorrelationIdMiddleware
     public static string GetCorrelationId(HttpContext context) =>
         context.Items.TryGetValue(ItemKey, out var value) && value is string s && !string.IsNullOrWhiteSpace(s)
             ? s
-            : "unknown";
+            : CorrelationIdRules.NewId();
 }

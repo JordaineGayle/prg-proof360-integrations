@@ -3,8 +3,10 @@ using System.Text.Json;
 using PRG.Proof360.Integrations.Application.Abstractions.Persistence;
 using PRG.Proof360.Integrations.Application.Abstractions.Time;
 using PRG.Proof360.Integrations.Application.Errors;
+using PRG.Proof360.Integrations.Application.Observability;
 using PRG.Proof360.Integrations.Application.Outcomes;
 using PRG.Proof360.Integrations.Core.Integration;
+using PRG.Proof360.Integrations.Core.Observability;
 using PRG.Proof360.Integrations.Core.Providers;
 using PRG.Proof360.Integrations.Core.Providers.Capabilities;
 using PRG.Proof360.Integrations.Core.Providers.Contracts;
@@ -58,8 +60,8 @@ public sealed class ReceiveWebhookEventHandler
     private readonly IInboundWebhookNormalizer _normalizer;
     private readonly IWorkOrderSnapshotSource _workOrders;
     private readonly ReceiveProviderEventHandler _receive;
-    private readonly IIntegrationStore _store;
     private readonly IConnectorUnitOfWork _unitOfWork;
+    private readonly StructuredAuditWriter _audit;
     private readonly IClock _clock;
 
     /// <summary>Creates the handler.</summary>
@@ -68,16 +70,16 @@ public sealed class ReceiveWebhookEventHandler
         IInboundWebhookNormalizer normalizer,
         IWorkOrderSnapshotSource workOrders,
         ReceiveProviderEventHandler receive,
-        IIntegrationStore store,
         IConnectorUnitOfWork unitOfWork,
+        StructuredAuditWriter audit,
         IClock clock)
     {
         _verifier = verifier;
         _normalizer = normalizer;
         _workOrders = workOrders;
         _receive = receive;
-        _store = store;
         _unitOfWork = unitOfWork;
+        _audit = audit;
         _clock = clock;
     }
 
@@ -122,7 +124,9 @@ public sealed class ReceiveWebhookEventHandler
         if (!verification.IsValid)
         {
             var failure = MapVerificationFailure(verification);
-            await WriteSecurityAuditAsync(command, failure.Code, "rejected", cancellationToken);
+            var rejectResult = failure.Code == FailureCodes.WebhookTimestampSkew ? "stale" : "rejected";
+            await WriteSecurityAuditAsync(command, failure.Code, rejectResult, cancellationToken);
+            ConnectorTelemetry.RecordWebhook(rejectResult);
             return Result<ReceiveEventOutcome, IntegrationFailure>.Fail(failure);
         }
 
@@ -173,7 +177,7 @@ public sealed class ReceiveWebhookEventHandler
 
             var snapshot = ((Result<WorkOrderSnapshot, ProviderFailure>.Succeeded)reconciled).Value;
             var envelope = JsonSerializer.Serialize(snapshot);
-            return await _receive.HandleAsync(
+            var reconciledReceive = await _receive.HandleAsync(
                 new ReceiveProviderEventCommand
                 {
                     ProviderName = snapshot.ProviderName,
@@ -188,9 +192,11 @@ public sealed class ReceiveWebhookEventHandler
                     CorrelationId = command.CorrelationId
                 },
                 cancellationToken);
+            await AuditReceiveOutcomeAsync(command, evt.EventId, evt.PayloadHash, evt.SchemaVersion, reconciledReceive, cancellationToken);
+            return reconciledReceive;
         }
 
-        return await _receive.HandleAsync(
+        var received = await _receive.HandleAsync(
             new ReceiveProviderEventCommand
             {
                 ProviderName = evt.ProviderName,
@@ -205,6 +211,48 @@ public sealed class ReceiveWebhookEventHandler
                 CorrelationId = command.CorrelationId
             },
             cancellationToken);
+        await AuditReceiveOutcomeAsync(command, evt.EventId, evt.PayloadHash, evt.SchemaVersion, received, cancellationToken);
+        return received;
+    }
+
+    private async Task AuditReceiveOutcomeAsync(
+        ReceiveWebhookEventCommand command,
+        string eventId,
+        string? payloadHash,
+        string? schemaVersion,
+        Result<ReceiveEventOutcome, IntegrationFailure> received,
+        CancellationToken cancellationToken)
+    {
+        if (received.IsFailure)
+        {
+            return;
+        }
+
+        var value = ((Result<ReceiveEventOutcome, IntegrationFailure>.Succeeded)received).Value;
+        var (operation, result, metric) = value switch
+        {
+            ReceiveEventOutcome.Duplicate => (AuditOperations.WebhookDuplicate, "duplicate", "duplicate"),
+            _ => (AuditOperations.WebhookAccepted, "accepted", "accepted")
+        };
+
+        var causationId = CorrelationIdRules.NewId();
+        await _audit.WriteAsync(
+            new AuditWriteRequest
+            {
+                Operation = operation,
+                Result = result,
+                Direction = AuditDirections.Inbound,
+                CorrelationId = command.CorrelationId,
+                CausationId = causationId,
+                ProviderName = ProviderNames.FieldFlow,
+                ProviderInstanceId = SanitizeInstance(command.ProviderInstanceHeader),
+                EventId = SanitizeToken(eventId),
+                PayloadHash = payloadHash,
+                SchemaVersion = schemaVersion
+            },
+            cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        ConnectorTelemetry.RecordWebhook(metric);
     }
 
     private static IntegrationFailure MapVerificationFailure(WebhookVerificationResult verification)
@@ -243,20 +291,19 @@ public sealed class ReceiveWebhookEventHandler
     {
         // Sanitized only: never raw body, signature, or secret.
         var bodyHash = Convert.ToHexString(SHA256.HashData(command.RawBody.Span)).ToLowerInvariant();
-        await _store.AddAuditEventAsync(
-            new AuditEvent
+        await _audit.WriteAsync(
+            new AuditWriteRequest
             {
-                Id = Guid.NewGuid(),
+                Operation = AuditOperations.WebhookVerify,
+                Result = result,
+                Direction = AuditDirections.Inbound,
                 CorrelationId = command.CorrelationId,
-                Direction = "inbound",
+                CausationId = CorrelationIdRules.NewId(),
                 ProviderName = ProviderNames.FieldFlow,
                 ProviderInstanceId = SanitizeInstance(command.ProviderInstanceHeader),
-                Operation = "webhook.verify",
                 EventId = SanitizeToken(command.EventIdHeader),
-                Result = result,
                 ErrorCategory = failureCode,
-                PayloadHash = bodyHash,
-                Timestamp = _clock.UtcNow
+                PayloadHash = bodyHash
             },
             cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

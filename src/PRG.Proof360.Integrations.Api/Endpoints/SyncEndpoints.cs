@@ -1,4 +1,5 @@
 using PRG.Proof360.Integrations.Api.Errors;
+using PRG.Proof360.Integrations.Api.Middleware;
 using PRG.Proof360.Integrations.Application.Contractors;
 using PRG.Proof360.Integrations.Application.WorkOrders;
 
@@ -17,7 +18,9 @@ public static class SyncEndpoints
             HttpContext http,
             CancellationToken cancellationToken) =>
         {
-            var result = await handler.HandleAsync(cancellationToken);
+            var result = await handler.HandleAsync(
+                cancellationToken,
+                CorrelationIdMiddleware.GetCorrelationId(http));
             return result.ToHttpResult(http, outcome => Results.Ok(new
             {
                 imported = outcome is Application.Outcomes.ImportContractorsOutcome.Completed c

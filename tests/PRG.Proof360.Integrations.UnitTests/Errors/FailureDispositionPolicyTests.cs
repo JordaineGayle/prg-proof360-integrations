@@ -42,6 +42,35 @@ public sealed class FailureDispositionPolicyTests
     }
 
     [Fact]
+    public void Exhausted_dependency_wait_dead_letters_unknown_contractor()
+    {
+        var failure = new IntegrationFailure(
+            FailureCodes.ContractorMappingMissing,
+            "contractor not linked yet",
+            FailureCategory.Dependency);
+        var context = FreshContext(attemptCount: 8);
+        var disposition = _policy.Decide(failure, context);
+        var dead = Assert.IsType<FailureDisposition.DeadLetter>(disposition);
+        Assert.Equal(FailureCodes.UnexpectedError, dead.ReasonCode);
+    }
+
+    [Fact]
+    public void Exhausted_age_dead_letters_dependency_wait()
+    {
+        var failure = new IntegrationFailure(
+            FailureCodes.ContractorMappingMissing,
+            "contractor not linked yet",
+            FailureCategory.NotFound);
+        var context = new FailureDispositionContext(
+            AttemptCount: 2,
+            FirstSeenAt: _now.AddHours(-25),
+            UtcNow: _now,
+            MaxAttempts: 8);
+        var disposition = _policy.Decide(failure, context);
+        Assert.IsType<FailureDisposition.DeadLetter>(disposition);
+    }
+
+    [Fact]
     public void Rate_limited_uses_retry_after_when_present()
     {
         var failure = new IntegrationFailure(

@@ -50,6 +50,11 @@ public sealed class OutboxMessage
     /// <summary>Gets or sets ErrorMessage.</summary>
     public string? ErrorMessage { get; set; }
 
+    /// <summary>
+    /// Append-only sanitized failure history JSON. Not overwritten on replay; last error fields may clear.
+    /// </summary>
+    public string? FailureHistoryJson { get; set; }
+
     /// <summary>Gets or sets CreatedAt.</summary>
     public DateTimeOffset CreatedAt { get; set; }
 

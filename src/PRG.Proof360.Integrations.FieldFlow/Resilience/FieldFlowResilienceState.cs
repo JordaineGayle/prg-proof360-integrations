@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using PRG.Proof360.Integrations.Core.Observability;
 
 namespace PRG.Proof360.Integrations.FieldFlow.Resilience;
 
@@ -49,6 +50,8 @@ public sealed class FieldFlowResilienceState
             LastFailureCategory = "Unavailable";
             LastFailureCode = "circuit_open";
         }
+
+        ConnectorTelemetry.RecordCircuitTransition("opened");
     }
 
     /// <summary>Sets circuit to half-open.</summary>
@@ -58,6 +61,8 @@ public sealed class FieldFlowResilienceState
         {
             CircuitState = FieldFlowCircuitStates.HalfOpen;
         }
+
+        ConnectorTelemetry.RecordCircuitTransition("half_open");
     }
 
     /// <summary>Sets circuit to closed.</summary>
@@ -67,6 +72,8 @@ public sealed class FieldFlowResilienceState
         {
             CircuitState = FieldFlowCircuitStates.Closed;
         }
+
+        ConnectorTelemetry.RecordCircuitTransition("closed");
     }
 
     /// <summary>Records a successful final provider call.</summary>

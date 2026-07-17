@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using PRG.Proof360.Integrations.Application.Abstractions.Persistence;
 using PRG.Proof360.Integrations.Application.Contractors;
 using PRG.Proof360.Integrations.Application.DependencyInjection;
+using PRG.Proof360.Integrations.Application.Errors;
 using PRG.Proof360.Integrations.Application.Inbox;
 using PRG.Proof360.Integrations.Application.Mapping;
 using PRG.Proof360.Integrations.Application.Outcomes;
@@ -226,6 +227,41 @@ public sealed class InboundSyncTests
 
             var inbox = await sp.GetRequiredService<ConnectorDbContext>().InboxMessages.SingleAsync();
             Assert.Equal(InboxMessageStates.WaitingForDependency, inbox.State);
+        });
+    }
+
+    [Fact]
+    public async Task Exhausted_unknown_contractor_dependency_is_dead_lettered()
+    {
+        await using var fx = await InboundSyncTestFixture.CreateAsync(
+            contractors: [],
+            workOrders: [InboundFixtures.WorkOrder(contractorId: "ctr-missing")]);
+
+        await fx.ScopedAsync(async sp =>
+        {
+            Assert.True((await sp.GetRequiredService<ImportWorkOrdersHandler>().HandleAsync(CancellationToken.None)).IsSuccess);
+            var db = sp.GetRequiredService<ConnectorDbContext>();
+            var inbox = await db.InboxMessages.SingleAsync();
+            Assert.Equal(InboxMessageStates.WaitingForDependency, inbox.State);
+
+            // Force attempt budget exhaustion while dependency remains unresolved.
+            inbox.AttemptCount = 8;
+            inbox.NextAttemptAt = DateTimeOffset.UtcNow.AddMinutes(-1);
+            inbox.State = InboxMessageStates.Pending;
+            await db.SaveChangesAsync();
+
+            var processed = await sp.GetRequiredService<ProcessInboxMessageHandler>()
+                .HandleAsync(InboundSyncTestFixture.ProviderInstanceId, CancellationToken.None);
+            Assert.True(processed.IsSuccess);
+            Assert.IsType<ProcessInboxOutcome.DeadLettered>(
+                ((Result<ProcessInboxOutcome, IntegrationFailure>.Succeeded)processed).Value);
+
+            inbox = await db.InboxMessages.SingleAsync();
+            Assert.Equal(InboxMessageStates.DeadLettered, inbox.State);
+            Assert.Equal(0, await sp.GetRequiredService<ICanonicalWriter>().CountJobsAsync());
+            Assert.Contains(
+                await db.AuditEvents.ToListAsync(),
+                a => a.Operation == "message.dead_lettered");
         });
     }
 

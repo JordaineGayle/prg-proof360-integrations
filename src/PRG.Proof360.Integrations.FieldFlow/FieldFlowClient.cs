@@ -1,9 +1,11 @@
+using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 using Polly.CircuitBreaker;
 using Polly.Timeout;
+using PRG.Proof360.Integrations.Core.Observability;
 using PRG.Proof360.Integrations.Core.Providers.Contracts;
 using PRG.Proof360.Integrations.Core.Results;
 using PRG.Proof360.Integrations.FieldFlow.Contracts;
@@ -54,12 +56,15 @@ public sealed class FieldFlowClient
     public async Task<Result<IReadOnlyList<ContractorSnapshot>, ProviderFailure>> ListContractorsAsync(
         CancellationToken cancellationToken)
     {
+        var sw = Stopwatch.StartNew();
         try
         {
             using var response = await _httpClient.GetAsync(new Uri("contractors", UriKind.Relative), cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
-                return FailListContractors(await ClassifyAsync(response, cancellationToken));
+                var failure = await ClassifyAsync(response, cancellationToken);
+                RecordProvider("list_contractors", failure.Kind, sw.Elapsed.TotalMilliseconds);
+                return FailListContractors(failure);
             }
 
             var dtos = await response.Content.ReadFromJsonAsync<List<FieldFlowContractorDto>>(JsonOptions, cancellationToken)
@@ -76,6 +81,7 @@ public sealed class FieldFlowClient
                 snapshots.Add(((Result<ContractorSnapshot, ProviderFailure>.Succeeded)mapped).Value);
             }
 
+            ConnectorTelemetry.RecordProviderRequest("list_contractors", "success", sw.Elapsed.TotalMilliseconds);
             return Ok(Result<IReadOnlyList<ContractorSnapshot>, ProviderFailure>.Ok(snapshots));
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -84,7 +90,9 @@ public sealed class FieldFlowClient
         }
         catch (Exception ex) when (IsProviderTransport(ex))
         {
-            return FailListContractors(MapTransport(ex, ambiguousWrite: false));
+            var failure = MapTransport(ex, ambiguousWrite: false);
+            RecordProvider("list_contractors", failure.Kind, sw.Elapsed.TotalMilliseconds);
+            return FailListContractors(failure);
         }
     }
 
@@ -249,6 +257,24 @@ public sealed class FieldFlowClient
     {
         var needsAttention = failure.Kind is ProviderFailureKind.Authentication or ProviderFailureKind.Forbidden;
         _resilienceState.RecordFailure(failure.Kind.ToString(), failure.Code, _timeProvider.GetUtcNow(), needsAttention);
+        if (failure.Kind == ProviderFailureKind.RateLimited)
+        {
+            ConnectorTelemetry.RateLimits.Add(1);
+        }
+    }
+
+    private static void RecordProvider(string operation, ProviderFailureKind kind, double durationMs)
+    {
+        var outcome = kind switch
+        {
+            ProviderFailureKind.Timeout => "timeout",
+            ProviderFailureKind.RateLimited => "rate_limited",
+            ProviderFailureKind.CircuitOpen => "circuit_open",
+            ProviderFailureKind.Authentication or ProviderFailureKind.Forbidden => "auth",
+            ProviderFailureKind.Validation => "validation",
+            _ => "failure"
+        };
+        ConnectorTelemetry.RecordProviderRequest(operation, outcome, durationMs);
     }
 
     private static bool IsProviderTransport(Exception ex) =>

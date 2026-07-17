@@ -20,6 +20,7 @@ app.MapConnectorHealthEndpoints();
 app.MapSyncEndpoints();
 app.MapWebhookEndpoints();
 app.MapDispatchEndpoints();
+app.MapAdminReplayEndpoints();
 
 if (app.Environment.IsDevelopment())
 {

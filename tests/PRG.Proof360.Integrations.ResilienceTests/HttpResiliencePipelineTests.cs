@@ -73,7 +73,8 @@ public sealed class HttpResiliencePipelineTests
         Assert.Equal(TimeSpan.FromSeconds(45), delay);
 
         var task = fx.Client.ListContractorsAsync(CancellationToken.None);
-        await Task.Delay(20);
+        // Bounded probe: let Polly schedule the Retry-After delay on FakeTimeProvider.
+        await Task.Delay(15);
         Assert.False(task.IsCompleted);
 
         fx.Time.Advance(TimeSpan.FromSeconds(45));
@@ -214,7 +215,7 @@ public sealed class HttpResiliencePipelineTests
 
         using var cts = new CancellationTokenSource();
         var task = fx.Client.ListContractorsAsync(cts.Token);
-        await Task.Delay(20);
+        await WaitUntilAsync(() => fx.Handler.AttemptCount >= 1, timeout: TimeSpan.FromSeconds(2));
         await cts.CancelAsync();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await task);
@@ -237,6 +238,23 @@ public sealed class HttpResiliencePipelineTests
         for (var i = 0; i < steps && !task.IsCompleted; i++)
         {
             time.Advance(step);
+            // Short wall-clock yield so FakeTimeProvider timer callbacks can run.
+            await Task.Delay(5);
+        }
+
+        Assert.True(task.IsCompleted, "Resilience call did not complete within the bounded FakeTimeProvider probe.");
+    }
+
+    private static async Task WaitUntilAsync(Func<bool> predicate, TimeSpan timeout)
+    {
+        var start = DateTime.UtcNow;
+        while (!predicate())
+        {
+            if (DateTime.UtcNow - start > timeout)
+            {
+                Assert.Fail("Condition was not met within the bounded async probe.");
+            }
+
             await Task.Delay(5);
         }
     }

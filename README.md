@@ -31,9 +31,15 @@ docs/
 ```bash
 dotnet restore
 dotnet format
-dotnet build --configuration Release
-dotnet test --configuration Release --no-build
+dotnet format --verify-no-changes
+dotnet build --configuration Release --no-restore
+mkdir -p artifacts/test-results
+dotnet test --configuration Release --no-build \
+  --results-directory artifacts/test-results \
+  --logger "trx;LogFilePrefix=prg-tests"
 ```
+
+TRX files land under `artifacts/test-results/` (gitignored; one per test project). Requirements mapping: `docs/assignment/requirements-traceability.md`.
 
 ## Run
 
@@ -48,7 +54,16 @@ Health checks:
 - Connector: `GET /connectors/fieldflow/health` (Healthy / Degraded / Offline / NeedsAttention)
 - Mock: `GET /health`
 
-Resilience: `docs/architecture/resilience.md`, ADR-007. Configuration placeholders: `.env.example` (never commit real secrets).
+Admin replay (Development / `AdminReplay:Enabled`):
+
+```bash
+curl -X POST "http://localhost:5203/admin/inbox/$INBOX_ID/replay" \
+  -H "Content-Type: application/json" \
+  -H "X-Correlation-Id: ops-1" \
+  -d '{"operatorId":"jordaine","reason":"mapping fixed"}'
+```
+
+Observability: `docs/architecture/observability.md`, runbook `docs/runbooks/replay-and-dead-letter.md`, ADR-007. Configuration placeholders: `.env.example` (never commit real secrets).
 
 ## FieldFlow mock (Prompt 03)
 
@@ -179,4 +194,4 @@ Idempotency key: `fieldflow:{instance}:{jobId}:dispatch:v1`. Ambiguous POST reco
 
 ## Current status
 
-Inbound sync/webhooks, outbound outbox dispatch, and FieldFlow HTTP resilience/circuit/health landed (Prompts 05–08). Audit/metrics hardening remains Prompt 09+.
+Prompts 05–10 landed: inbound/outbound, resilience/health, audit/replay/observability, full suite hardening, and filled requirements traceability. Architecture/Leadership PDFs and ZIP packaging remain Prompt 11–12.

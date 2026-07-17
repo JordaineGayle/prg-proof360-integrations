@@ -49,6 +49,60 @@ public sealed class ConnectorHealthTests
     }
 
     [Fact]
+    public void Prolonged_silence_after_failure_is_Offline()
+    {
+        var utcNow = DateTimeOffset.Parse("2026-07-17T12:00:00Z");
+        var runtime = new FakeRuntime
+        {
+            CircuitState = "Closed",
+            LastSuccessfulProviderCallAt = utcNow.AddMinutes(-10),
+            LastFailureAt = utcNow.AddMinutes(-1),
+            LastFailureCategory = "Unavailable"
+        };
+        var policy = new ConnectorHealthStatusPolicy(Options.Create(new ConnectorHealthOptions
+        {
+            OfflineNoSuccessSeconds = 300
+        }));
+
+        var status = policy.ResolveStatus(
+            runtime,
+            new IntegrationBacklogMetrics(0, 0, 0, 0, null),
+            recentRateLimitCount: 0,
+            utcNow);
+
+        Assert.Equal(ConnectorHealthStatuses.Offline, status);
+    }
+
+    [Fact]
+    public void Snapshot_includes_unresolved_dependency_and_freshness_inputs()
+    {
+        var utcNow = DateTimeOffset.Parse("2026-07-17T12:00:00Z");
+        var oldest = utcNow.AddMinutes(-12);
+        var runtime = new FakeRuntime
+        {
+            CircuitState = "Closed",
+            LastSuccessfulProviderCallAt = utcNow.AddMinutes(-2)
+        };
+        var policy = new ConnectorHealthStatusPolicy(Options.Create(new ConnectorHealthOptions()));
+        var snapshot = policy.Evaluate(
+            runtime,
+            new IntegrationBacklogMetrics(
+                InboxBacklogCount: 3,
+                OutboxBacklogCount: 1,
+                DeadLetterCount: 0,
+                UnresolvedDependencyCount: 2,
+                OldestBacklogCreatedAt: oldest),
+            lastSuccessfulSyncAt: utcNow.AddMinutes(-5),
+            utcNow);
+
+        Assert.Equal(2, snapshot.UnresolvedDependencyCount);
+        Assert.Equal(3, snapshot.InboxBacklogCount);
+        Assert.Equal(utcNow.AddMinutes(-5), snapshot.LastSuccessfulSyncAt);
+        Assert.NotNull(snapshot.OldestBacklogAgeSeconds);
+        Assert.InRange(snapshot.OldestBacklogAgeSeconds!.Value, 11 * 60, 13 * 60);
+    }
+
+    [Fact]
     public void Health_snapshot_contains_no_sensitive_markers()
     {
         var runtime = new FakeRuntime

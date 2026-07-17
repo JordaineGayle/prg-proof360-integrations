@@ -167,6 +167,9 @@ namespace PRG.Proof360.Integrations.Infrastructure.Persistence.Migrations
                     b.Property<long?>("EventVersion")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("FailureHistoryJson")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTimeOffset?>("NextAttemptAt")
                         .HasColumnType("TEXT");
 
@@ -247,6 +250,9 @@ namespace PRG.Proof360.Integrations.Infrastructure.Persistence.Migrations
 
                     b.Property<long?>("ExpectedCanonicalVersion")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("FailureHistoryJson")
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("IdempotencyKey")
                         .IsRequired()

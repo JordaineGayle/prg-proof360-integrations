@@ -158,7 +158,7 @@ public sealed class WebhookSecurityTests
     }
 
     [Fact]
-    public async Task Newer_status_event_applies_and_older_cannot_regress()
+    public async Task Newer_status_then_terminal_blocks_older_event_regression()
     {
         await using var fx = await WebhookFixture.CreateAsync(seedContractor: true);
         await fx.ScopedAsync(async sp =>
@@ -210,6 +210,39 @@ public sealed class WebhookSecurityTests
 
             var job = await sp.GetRequiredService<ConnectorDbContext>().Jobs.SingleAsync();
             Assert.Equal("Ada", job.CustomerName);
+        });
+    }
+
+    [Fact]
+    public async Task Equal_version_same_payload_is_ignored_stale_without_mutation()
+    {
+        await using var fx = await WebhookFixture.CreateAsync(seedContractor: true);
+        await fx.ScopedAsync(async sp =>
+        {
+            var first = SignedEnvelope(eventId: "evt-same-1", status: "open", version: 4, customerName: "Ada");
+            var same = SignedEnvelope(eventId: "evt-same-2", status: "open", version: 4, customerName: "Ada");
+
+            Assert.True((await ReceiveAsync(sp, first.Body, first.Headers, "c1")).IsSuccess);
+            Assert.True((await sp.GetRequiredService<ProcessInboxMessageHandler>()
+                .HandleAsync(Instance, CancellationToken.None)).IsSuccess);
+
+            var before = await sp.GetRequiredService<ConnectorDbContext>().Jobs.AsNoTracking().SingleAsync();
+
+            Assert.True((await ReceiveAsync(sp, same.Body, same.Headers, "c2")).IsSuccess);
+            var processed = await sp.GetRequiredService<ProcessInboxMessageHandler>()
+                .HandleAsync(Instance, CancellationToken.None);
+            Assert.True(processed.IsSuccess);
+            var applied = Assert.IsType<ProcessInboxOutcome.WorkOrderApplied>(
+                ((Result<ProcessInboxOutcome, IntegrationFailure>.Succeeded)processed).Value);
+            Assert.IsType<ApplyWorkOrderOutcome.IgnoredStale>(applied.Outcome);
+
+            var after = await sp.GetRequiredService<ConnectorDbContext>().Jobs.AsNoTracking().SingleAsync();
+            Assert.Equal(before.CustomerName, after.CustomerName);
+            Assert.Equal(before.Status, after.Status);
+            Assert.Equal(1, await sp.GetRequiredService<ConnectorDbContext>().Jobs.CountAsync());
+            Assert.Contains(
+                await sp.GetRequiredService<ConnectorDbContext>().AuditEvents.ToListAsync(),
+                a => a.Result == "ignored_stale");
         });
     }
 

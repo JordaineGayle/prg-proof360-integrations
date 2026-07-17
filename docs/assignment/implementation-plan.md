@@ -3,11 +3,11 @@
 Aligned with `00_MASTER_EXECUTION_PLAN.md` and kit prompts `00`–`12`.  
 Delivery semantics: **at-least-once + idempotent effects** (never exactly-once).
 
-## Current repository state (after typed error model)
+## Current repository state (after Prompt 10)
 
-- Modular monolith on **.NET 10** with canonical models, FieldFlow mock, capability ports, ACL mappers, and SOT docs.
-- `Result<TSuccess, TFailure>`, `ProviderFailure`, `IntegrationFailure`, `FailureDispositionPolicy`, RFC 7807 Problem Details, and outer exception middleware.
-- Inbound/outbound workers still deferred (Prompt 05+).
+- Modular monolith on **.NET 10** with canonical models, FieldFlow mock, capability ports, ACL mappers, SOT docs, inbound sync/webhooks, outbound outbox, resilience/health, audit/replay/metrics.
+- `Result<TSuccess, TFailure>`, typed failures/dispositions, RFC 7807 Problem Details, and outer exception middleware.
+- Full automated suite + filled `docs/assignment/requirements-traceability.md`; Architecture/Leadership PDFs and ZIP packaging remain Prompt 11–12.
 
 ## Phases, exit gates, and evidence
 
@@ -43,6 +43,8 @@ Delivery semantics: **at-least-once + idempotent effects** (never exactly-once).
 - Update ADRs from `Proposed` → `Accepted` only when the decision is confirmed in code/docs.
 - Behavioral requirements require a test or reproducible demo step — not “documented only.”
 
-## Intentionally unimplemented until later prompts
+## Remaining kit prompts
 
-All connector behavior, persistence, mock API, tests, and final PDFs remain unimplemented after Prompt 00. This prompt is documentation baseline only.
+- Prompt 11: Architecture + Leadership PDFs, AI/scope notes
+- Prompt 12: secret scan, ZIP packaging, final DoD
+- Prompt 13 (optional): short demo

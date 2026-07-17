@@ -92,7 +92,7 @@ public sealed class OutboundDispatchTests
                 jobId = await setup.SeedQualifiedAsync();
             }
 
-            await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => QueueOnceAsync(path, jobId)));
+            await Task.WhenAll(Enumerable.Range(0, 10).Select(_ => QueueOnceAsync(path, jobId)));
 
             await using var verify = new ConnectorDbContext(
                 new DbContextOptionsBuilder<ConnectorDbContext>().UseSqlite($"Data Source={path}").Options);

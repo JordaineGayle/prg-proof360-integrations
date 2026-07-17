@@ -74,3 +74,7 @@ These are owned decisions, not passive AI defaults:
 ## 6. Limits of AI assistance
 
 AI accelerates drafting and mechanical wiring; it can miss subtle ownership rules, invent confidence, or over-scope. Guardrails used: kit non-negotiables, architecture tests, typed Result/error model, and human review of reliability/security paths. **No production/customer data or real credentials were used.**
+
+## 7. Optional demo (Prompt 13)
+
+`06_Demo.mp4` is a captioned evidence reel generated from a live `scripts/run-demo.sh` capture (real local mock/API JSON) plus macOS `say` narration. Duration is under five minutes. It is not a live screen recording of a human presenter; the underlying commands and outputs were rehearsed twice from reset.

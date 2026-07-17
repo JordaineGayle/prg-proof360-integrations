@@ -302,4 +302,38 @@ internal sealed class IntegrationStore : IIntegrationStore
 
         return query.CountAsync(cancellationToken);
     }
+
+    /// <inheritdoc />
+    public Task<int> CountInboxByStateAsync(
+        string providerInstanceId,
+        string state,
+        CancellationToken cancellationToken = default) =>
+        _dbContext.InboxMessages.CountAsync(
+            x => x.ProviderInstanceId == providerInstanceId && x.State == state,
+            cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<int> MakeWaitingDependenciesDueAsync(
+        string providerInstanceId,
+        DateTimeOffset utcNow,
+        CancellationToken cancellationToken = default)
+    {
+        var waiting = await _dbContext.InboxMessages
+            .Where(x => x.ProviderInstanceId == providerInstanceId)
+            .Where(x => x.State == InboxMessageStates.WaitingForDependency)
+            .ToListAsync(cancellationToken);
+
+        foreach (var message in waiting)
+        {
+            message.NextAttemptAt = utcNow.AddSeconds(-1);
+            message.RowVersion += 1;
+        }
+
+        if (waiting.Count > 0)
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        return waiting.Count;
+    }
 }

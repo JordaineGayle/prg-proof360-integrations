@@ -24,6 +24,19 @@ public static class TestControlEndpoints
             return Results.Ok(new { reset = true });
         });
 
+        group.MapPost("/contractors", (ContractorDto contractor, MockStore store) =>
+        {
+            if (string.IsNullOrWhiteSpace(contractor.ContractorId))
+            {
+                return Results.Json(
+                    new ErrorResponse { Code = "contractor_id_required", Message = "contractorId is required." },
+                    statusCode: 400);
+            }
+
+            var saved = store.UpsertContractor(contractor);
+            return Results.Ok(new { upserted = true, contractorId = saved.ContractorId });
+        });
+
         group.MapPost("/failures", (FailureInjectionRequest request, MockStore store) =>
         {
             store.Failures.Configure(request);

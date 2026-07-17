@@ -45,4 +45,4 @@ Delivery semantics: **at-least-once + idempotent effects** (never exactly-once).
 
 ## Remaining kit prompts
 
-- Prompt 13 (optional): short demo video ≤ 5 minutes
+None — Prompt 13 optional demo video is included as `docs/packages/06_Demo.mp4`.

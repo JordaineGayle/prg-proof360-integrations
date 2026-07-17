@@ -6,12 +6,20 @@
 | `03_README.md` | Standalone submission README |
 | `04_Leadership_Recommendation.pdf` | Accounting-first memo (source: `../leadership/leadership-recommendation.md`) |
 | `05_AI_and_Scope_Notes.md` | AI use + scope (mirrored from `../assignment/ai-and-scope-notes.md`) |
-| `Jordaine_Gayle_PRG_Integration_Assignment.zip` | Final Prompt 12 submission package |
+| `06_Demo.mp4` | Optional ≤5 min demo (Prompt 13) |
+| `Jordaine_Gayle_PRG_Integration_Assignment.zip` | Final submission package |
 
 Regenerate PDFs:
 
 ```bash
 node scripts/render-submission-pdfs.mjs
+```
+
+Regenerate demo capture + video:
+
+```bash
+./scripts/run-demo.sh
+./scripts/render-demo-video.sh
 ```
 
 Regenerate ZIP:

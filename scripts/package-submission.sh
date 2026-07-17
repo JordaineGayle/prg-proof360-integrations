@@ -16,6 +16,9 @@ cp "$ROOT/docs/packages/01_Architecture.pdf" "$STAGE/01_Architecture.pdf"
 cp "$ROOT/docs/packages/03_README.md" "$STAGE/03_README.md"
 cp "$ROOT/docs/packages/04_Leadership_Recommendation.pdf" "$STAGE/04_Leadership_Recommendation.pdf"
 cp "$ROOT/docs/packages/05_AI_and_Scope_Notes.md" "$STAGE/05_AI_and_Scope_Notes.md"
+if [[ -f "$ROOT/docs/packages/06_Demo.mp4" ]]; then
+  cp "$ROOT/docs/packages/06_Demo.mp4" "$STAGE/06_Demo.mp4"
+fi
 
 rsync -a \
   --exclude '.git/' \
@@ -36,6 +39,7 @@ rsync -a \
   --exclude 'coverage/' \
   --exclude '.DS_Store' \
   --exclude '*.zip' \
+  --exclude '*.mp4' \
   --exclude 'Jordaine_Gayle_PRG_Integration_Assignment.zip' \
   "$ROOT/" "$PROTO/"
 
@@ -52,9 +56,11 @@ rm -f \
   "$PROTO/docs/packages/"*.pdf \
   "$PROTO/docs/packages/"*.print.html \
   "$PROTO/docs/packages/"*.zip \
+  "$PROTO/docs/packages/"*.mp4 \
   "$PROTO/docs/packages/03_README.md" \
   "$PROTO/docs/packages/05_AI_and_Scope_Notes.md" \
-  "$PROTO/"*.zip
+  "$PROTO/"*.zip \
+  "$PROTO/"*.mp4
 
 find "$PROTO" \( -name bin -o -name obj -o -name TestResults \) -type d -prune -exec rm -rf {} +
 find "$PROTO" \( -name '*.db' -o -name '*.db-shm' -o -name '*.db-wal' -o -name '.env' -o -name '.DS_Store' \) -delete
@@ -66,15 +72,20 @@ test -f "$PROTO/.env.example"
 test ! -d "$PROTO/.git"
 test ! -d "$PROTO/bin"
 
-rm -f "$STAGE/06_Demo.mp4" "$ZIP_OUT"
+rm -f "$ZIP_OUT"
+ZIP_ARGS=(
+  01_Architecture.pdf
+  02_Prototype
+  03_README.md
+  04_Leadership_Recommendation.pdf
+  05_AI_and_Scope_Notes.md
+)
+if [[ -f "$STAGE/06_Demo.mp4" ]]; then
+  ZIP_ARGS+=(06_Demo.mp4)
+fi
 (
   cd "$STAGE"
-  zip -rq "$ZIP_OUT" \
-    01_Architecture.pdf \
-    02_Prototype \
-    03_README.md \
-    04_Leadership_Recommendation.pdf \
-    05_AI_and_Scope_Notes.md
+  zip -rq "$ZIP_OUT" "${ZIP_ARGS[@]}"
 )
 
 echo "ZIP_OUT=$ZIP_OUT"

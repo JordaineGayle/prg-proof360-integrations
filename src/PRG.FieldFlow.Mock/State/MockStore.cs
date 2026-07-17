@@ -68,6 +68,25 @@ public sealed class MockStore
         }
     }
 
+    /// <summary>
+    /// Upserts a contractor fixture (local demo/test control). Used to resolve unknown-contractor demos.
+    /// </summary>
+    public ContractorDto UpsertContractor(ContractorDto contractor)
+    {
+        ArgumentNullException.ThrowIfNull(contractor);
+        if (string.IsNullOrWhiteSpace(contractor.ContractorId))
+        {
+            throw new ArgumentException("contractorId is required.", nameof(contractor));
+        }
+
+        lock (_gate)
+        {
+            var clone = CloneContractor(contractor);
+            _contractors[clone.ContractorId] = clone;
+            return CloneContractor(clone);
+        }
+    }
+
     /// <summary>Finds a work order by Proof360 client reference.</summary>
     public WorkOrderDto? FindByClientReference(string clientReference)
     {

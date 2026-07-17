@@ -100,4 +100,18 @@ public interface IIntegrationStore
         string operation,
         string? result = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Counts inbox messages in a state for a provider instance.</summary>
+    Task<int> CountInboxByStateAsync(
+        string providerInstanceId,
+        string state,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Demo helper: makes WaitingForDependency messages due immediately so the next process batch can claim them.
+    /// </summary>
+    Task<int> MakeWaitingDependenciesDueAsync(
+        string providerInstanceId,
+        DateTimeOffset utcNow,
+        CancellationToken cancellationToken = default);
 }

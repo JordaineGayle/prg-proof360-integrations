@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using PRG.Proof360.Integrations.Application.Abstractions.Time;
 using PRG.Proof360.Integrations.Application.Contractors;
+using PRG.Proof360.Integrations.Application.Demo;
 using PRG.Proof360.Integrations.Application.Dispatch;
 using PRG.Proof360.Integrations.Application.Errors;
 using PRG.Proof360.Integrations.Application.Health;
@@ -72,6 +73,8 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<QueueJobDispatchHandler>();
         services.AddScoped<ProcessOutboxMessageHandler>();
         services.AddScoped<SeedQualifiedDispatchDemoHandler>();
+        services.AddScoped<GetDemoSummaryHandler>();
+        services.AddScoped<NudgeWaitingDependenciesHandler>();
         services.AddScoped<GetConnectorHealthHandler>();
         services.AddScoped<ReplayDeadLetterHandler>();
     }

@@ -89,7 +89,9 @@ public static class WebhookEndpoints
                     },
                     statusCode: StatusCodes.Status202Accepted);
             });
-        });
+        })
+        .WithTags("Webhooks")
+        .WithSummary("Receive HMAC-signed FieldFlow webhook (accept to inbox; do not process inline)");
 
         return endpoints;
     }

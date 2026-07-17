@@ -30,7 +30,9 @@ public static class SyncEndpoints
                     ? u.UpdatedCount
                     : 0
             }));
-        });
+        })
+        .WithTags("Sync")
+        .WithSummary("Poll FieldFlow contractors into Vendor apply path");
 
         endpoints.MapPost("/sync/work-orders", async (
             ImportWorkOrdersHandler handler,
@@ -44,7 +46,9 @@ public static class SyncEndpoints
                 updated = outcome is ImportWorkOrdersOutcome.Completed u ? u.UpdatedCount : 0,
                 waiting = outcome is ImportWorkOrdersOutcome.Completed w ? w.WaitingCount : 0
             }));
-        });
+        })
+        .WithTags("Sync")
+        .WithSummary("Poll FieldFlow work orders into Job apply path");
 
         return endpoints;
     }

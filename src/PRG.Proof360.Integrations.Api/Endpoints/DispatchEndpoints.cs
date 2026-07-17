@@ -53,7 +53,9 @@ public static class DispatchEndpoints
                     _ => Results.Ok(new { status = "unknown", correlationId })
                 };
             });
-        });
+        })
+        .WithTags("Dispatch")
+        .WithSummary("Queue outbound FieldFlow dispatch for a qualified Job");
 
         return endpoints;
     }

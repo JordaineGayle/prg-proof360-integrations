@@ -75,6 +75,9 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<SeedQualifiedDispatchDemoHandler>();
         services.AddScoped<GetDemoSummaryHandler>();
         services.AddScoped<NudgeWaitingDependenciesHandler>();
+        services.AddScoped<ExhaustWaitingDependenciesDemoHandler>();
+        services.AddScoped<SeedUnapprovedDispatchDemoHandler>();
+        services.AddScoped<SeedAmbiguousDispatchDemoHandler>();
         services.AddScoped<GetConnectorHealthHandler>();
         services.AddScoped<ReplayDeadLetterHandler>();
     }

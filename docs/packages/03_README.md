@@ -177,6 +177,9 @@ Outputs under `docs/packages/`.
 
 ## Endpoints
 
+**Interactive catalog (Development):** open [http://localhost:5203/swagger](http://localhost:5203/swagger)  
+**Scenario runner:** [http://localhost:5203/_demo/scenarios](http://localhost:5203/_demo/scenarios)
+
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/health/live` | Process liveness; ignores FieldFlow |

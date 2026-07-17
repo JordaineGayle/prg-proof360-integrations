@@ -87,6 +87,35 @@ public sealed class MockStore
         }
     }
 
+    /// <summary>
+    /// Upserts a work-order fixture (local demo/test control). Used for DLQ / dependency demos.
+    /// </summary>
+    public WorkOrderDto UpsertWorkOrder(WorkOrderDto workOrder)
+    {
+        ArgumentNullException.ThrowIfNull(workOrder);
+        if (string.IsNullOrWhiteSpace(workOrder.WorkOrderId))
+        {
+            throw new ArgumentException("workOrderId is required.", nameof(workOrder));
+        }
+
+        lock (_gate)
+        {
+            var clone = CloneWorkOrder(workOrder);
+            if (clone.EntityVersion <= 0)
+            {
+                clone.EntityVersion = 1;
+            }
+
+            if (string.IsNullOrWhiteSpace(clone.Status))
+            {
+                clone.Status = WorkOrderStatuses.Open;
+            }
+
+            _workOrders[clone.WorkOrderId] = clone;
+            return CloneWorkOrder(clone);
+        }
+    }
+
     /// <summary>Finds a work order by Proof360 client reference.</summary>
     public WorkOrderDto? FindByClientReference(string clientReference)
     {

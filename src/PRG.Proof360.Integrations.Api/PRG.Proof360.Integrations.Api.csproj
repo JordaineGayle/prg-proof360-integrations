@@ -1,6 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
+    <PackageReference Include="Swashbuckle.AspNetCore" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\PRG.Proof360.Integrations.Application\PRG.Proof360.Integrations.Application.csproj" />
     <ProjectReference Include="..\PRG.Proof360.Integrations.Infrastructure\PRG.Proof360.Integrations.Infrastructure.csproj" />
     <ProjectReference Include="..\PRG.Proof360.Integrations.FieldFlow\PRG.Proof360.Integrations.FieldFlow.csproj" />

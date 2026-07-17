@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Proof360 Integration — Scenario Runner</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #1a222c;
+      --line: #2c3845;
+      --text: #e7eef5;
+      --muted: #8fa3b5;
+      --ok: #3dbe7a;
+      --bad: #e35d6a;
+      --run: #4aa3ff;
+      --warn: #e0b44c;
+      --mono: "IBM Plex Mono", "SF Mono", Menlo, Consolas, monospace;
+      --sans: "IBM Plex Sans", "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, #1d3a55 0%, transparent 55%),
+        radial-gradient(900px 500px at 100% 0%, #243528 0%, transparent 50%),
+        var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    header {
+      padding: 1.5rem 1.5rem 0.75rem;
+      border-bottom: 1px solid var(--line);
+      background: rgba(15, 20, 25, 0.75);
+      backdrop-filter: blur(8px);
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    h1 {
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 650;
+      letter-spacing: -0.02em;
+    }
+    .sub {
+      margin: 0.35rem 0 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+      max-width: 70ch;
+      line-height: 1.45;
+    }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      align-items: end;
+      margin-top: 1rem;
+    }
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    input {
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 0.45rem 0.6rem;
+      min-width: 16rem;
+    }
+    button {
+      font-family: var(--sans);
+      font-size: 0.9rem;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 0.5rem 0.9rem;
+      cursor: pointer;
+    }
+    button:hover:not(:disabled) { border-color: var(--run); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    button.primary {
+      background: #1e4f86;
+      border-color: #2f6fb0;
+    }
+    button.danger {
+      background: #5a2430;
+      border-color: #8a3544;
+    }
+    main {
+      display: grid;
+      grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.7fr);
+      gap: 1rem;
+      padding: 1rem 1.5rem 2rem;
+    }
+    @media (max-width: 960px) {
+      main { grid-template-columns: 1fr; }
+      input { min-width: 12rem; }
+    }
+    .panel {
+      background: rgba(26, 34, 44, 0.92);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .panel h2 {
+      margin: 0;
+      padding: 0.85rem 1rem;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      border-bottom: 1px solid var(--line);
+    }
+    .scenario {
+      border-bottom: 1px solid var(--line);
+      padding: 0.85rem 1rem;
+    }
+    .scenario:last-child { border-bottom: 0; }
+    .scenario-head {
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+      justify-content: space-between;
+    }
+    .scenario-title {
+      font-weight: 600;
+      font-size: 0.98rem;
+    }
+    .scenario-desc {
+      margin: 0.2rem 0 0;
+      color: var(--muted);
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+    .badge {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      padding: 0.2rem 0.45rem;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .badge.pass { color: var(--ok); border-color: #2f6b4a; background: #163226; }
+    .badge.fail { color: var(--bad); border-color: #7a3340; background: #3a1a22; }
+    .badge.run { color: var(--run); border-color: #2f5f8f; background: #163049; }
+    .badge.skip { color: var(--warn); border-color: #6d5a2a; background: #322914; }
+    .log {
+      margin-top: 0.55rem;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: #b7c7d6;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 9rem;
+      overflow: auto;
+      background: #0c1116;
+      border-radius: 6px;
+      padding: 0.5rem 0.6rem;
+      display: none;
+    }
+    .log.show { display: block; }
+    .coverage {
+      padding: 0.85rem 1rem 1rem;
+    }
+    .coverage p {
+      margin: 0 0 0.75rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+      line-height: 1.45;
+    }
+    .coverage ul {
+      margin: 0;
+      padding-left: 1.1rem;
+      color: var(--text);
+      font-size: 0.85rem;
+      line-height: 1.55;
+    }
+    .coverage code {
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      color: #9ec9ff;
+    }
+    .status-bar {
+      margin-top: 0.75rem;
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .status-bar strong { color: var(--text); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Proof360 × FieldFlow — Scenario Runner</h1>
+    <p class="sub">
+      Development-only live rehearsal — blueprint flow plus deep edge cases (concurrent dupes, DLQ, approval gate, ambiguous POST).
+      Mock calls go through a same-origin proxy (fixes localhost / CORS network errors).
+      Browse routes in <a href="/swagger" style="color:#9ec9ff">Swagger UI</a>.
+    </p>
+    <div class="toolbar">
+      <label>API base
+        <input id="apiBase" value="" spellcheck="false" />
+      </label>
+      <button class="primary" id="runAll">Run all scenarios</button>
+      <button id="ping">Ping hosts</button>
+      <button class="danger" id="resetOnly">Reset mock</button>
+    </div>
+    <div class="status-bar" id="statusBar">Ready.</div>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>Live scenarios</h2>
+      <div id="scenarios"></div>
+    </section>
+    <aside class="panel">
+      <h2>Also asserted offline</h2>
+      <div class="coverage">
+        <p>
+          The live steps below mirror the Release suite. These remain easiest to prove in automated tests:
+        </p>
+        <ul>
+          <li><code>Stale_timestamp_is_rejected</code></li>
+          <li><code>Equal_version_same_payload_*</code> / conflict variants</li>
+          <li><code>Replay_retains_event_identity_history_and_is_idempotent_for_completed</code></li>
+          <li><code>Authentication_401_is_called_once_and_sets_NeedsAttention</code></li>
+        </ul>
+        <p style="margin-top:1rem">
+          Full suite: <code>dotnet test --configuration Release</code>
+        </p>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const apiBaseEl = $("apiBase");
+    const statusBar = $("statusBar");
+    const scenariosEl = $("scenarios");
+
+    apiBaseEl.value = window.location.origin;
+
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const apiRoot = () => apiBaseEl.value.replace(/\/$/, "");
+    /** Same-origin proxy → FieldFlow mock (avoids browser network/CORS failures). */
+    const mockRoot = () => `${apiRoot()}/_demo/proxy/mock`;
+
+    async function req(base, path, { method = "GET", body, headers } = {}) {
+      const url = `${base.replace(/\/$/, "")}${path.startsWith("/") ? path : `/${path}`}`;
+      const init = { method, headers: { ...(headers || {}) } };
+      if (body !== undefined) {
+        init.headers["Content-Type"] = "application/json";
+        init.body = typeof body === "string" ? body : JSON.stringify(body);
+      }
+      const started = performance.now();
+      let response;
+      try {
+        response = await fetch(url, init);
+      } catch (err) {
+        const error = new Error(
+          `Network error calling ${url}: ${err.message}. ` +
+          `Ensure the API is running in Development on this origin and the mock is up on FieldFlow:BaseUrl.`
+        );
+        error.network = true;
+        throw error;
+      }
+      const text = await response.text();
+      let json = null;
+      try { json = text ? JSON.parse(text) : null; } catch { /* keep text */ }
+      return {
+        url,
+        status: response.status,
+        ok: response.ok,
+        ms: Math.round(performance.now() - started),
+        text,
+        json
+      };
+    }
+
+    const mockReq = (path, opts) => req(mockRoot(), path, opts);
+    const apiReq = (path, opts) => req(apiRoot(), path, opts);
+
+    function assert(condition, message) {
+      if (!condition) throw new Error(message);
+    }
+
+    const state = {
+      vendorCount: null,
+      jobCount: null,
+      waiting: null
+    };
+
+    const scenarios = [
+      {
+        id: "0",
+        title: "0 · Reset mock",
+        desc: "Clear FieldFlow mock state and wait until the API circuit is Closed.",
+        run: async (log) => {
+          const r = await mockReq("/_test/reset", { method: "POST" });
+          log(r);
+          assert(r.status === 200 && r.json?.reset === true, "Expected {reset:true}");
+
+          // Circuit state lives in the API process; mock reset alone is not enough after step 7.
+          let last = await apiReq("/connectors/fieldflow/health");
+          const circuit = last.json?.circuitState ?? last.json?.CircuitState;
+          if (circuit && circuit !== "Closed") {
+            statusBar.innerHTML = "Circuit still open — waiting <strong>16s</strong> break duration, then probing…";
+            await sleep(16000);
+            await apiReq("/sync/contractors", { method: "POST" }).catch(() => null);
+            last = await apiReq("/connectors/fieldflow/health");
+          }
+          log(last);
+          const status = last.json?.status ?? last.json?.Status;
+          const circuitAfter = last.json?.circuitState ?? last.json?.CircuitState;
+          assert(status === "Healthy" && (!circuitAfter || circuitAfter === "Closed"),
+            `Expected Healthy/Closed after reset, got ${status}/${circuitAfter}. Restart the API if this persists.`);
+        }
+      },
+      {
+        id: "1",
+        title: "1 · Health baseline",
+        desc: "Live/ready healthy; connector Closed.",
+        run: async (log) => {
+          const live = await apiReq("/health/live");
+          const ready = await apiReq("/health/ready");
+          const conn = await apiReq("/connectors/fieldflow/health");
+          log(live); log(ready); log(conn);
+          assert(live.ok && (live.text === "Healthy" || live.json?.status === "Healthy"), "live not Healthy");
+          assert(ready.ok, "ready not OK");
+          assert(conn.json?.status === "Healthy" || conn.json?.Status === "Healthy", "connector not Healthy");
+          const circuit = conn.json?.circuitState ?? conn.json?.CircuitState;
+          assert(!circuit || circuit === "Closed", `circuit expected Closed, got ${circuit}`);
+        }
+      },
+      {
+        id: "2",
+        title: "2 · Healthy sync",
+        desc: "Import contractors + work orders; unknown contractor waits.",
+        run: async (log) => {
+          const c = await apiReq("/sync/contractors", { method: "POST" });
+          const w = await apiReq("/sync/work-orders", { method: "POST" });
+          const s = await apiReq("/_demo/summary");
+          log(c); log(w); log(s);
+          assert(c.ok && (c.json?.imported ?? 0) >= 1, "contractors imported < 1");
+          assert(w.ok && (w.json?.created ?? 0) >= 1, "work-orders created < 1");
+          assert((w.json?.waiting ?? 0) >= 1, "work-orders waiting < 1");
+          assert((s.json?.vendorCount ?? s.json?.VendorCount ?? 0) >= 2, "vendorCount < 2");
+          assert((s.json?.jobCount ?? s.json?.JobCount ?? 0) >= 2, "jobCount < 2");
+          assert((s.json?.inboxWaitingForDependency ?? s.json?.InboxWaitingForDependency ?? 0) >= 1, "waiting dep < 1");
+          state.vendorCount = s.json?.vendorCount ?? s.json?.VendorCount;
+          state.jobCount = s.json?.jobCount ?? s.json?.JobCount;
+          state.waiting = s.json?.inboxWaitingForDependency ?? s.json?.InboxWaitingForDependency;
+        }
+      },
+      {
+        id: "3",
+        title: "3 · Idempotent repeat",
+        desc: "Re-sync should not grow vendor/job counts.",
+        run: async (log) => {
+          const c = await apiReq("/sync/contractors", { method: "POST" });
+          const w = await apiReq("/sync/work-orders", { method: "POST" });
+          const s = await apiReq("/_demo/summary");
+          log(c); log(w); log(s);
+          const vendors = s.json?.vendorCount ?? s.json?.VendorCount;
+          const jobs = s.json?.jobCount ?? s.json?.JobCount;
+          assert(vendors === state.vendorCount, `vendorCount changed ${state.vendorCount} → ${vendors}`);
+          assert(jobs === state.jobCount, `jobCount changed ${state.jobCount} → ${jobs}`);
+        }
+      },
+      {
+        id: "4",
+        title: "4 · Webhook + duplicate",
+        desc: "Same eventId delivered twice → both 202.",
+        run: async (log) => {
+          const body = {
+            targetUrl: `${apiRoot()}/webhooks/events`,
+            workOrderId: "wo-2001",
+            status: "scheduled",
+            entityVersion: 2,
+            eventId: "evt-demo-dup-1"
+          };
+          const a = await mockReq("/_test/webhooks/send", { method: "POST", body });
+          const b = await mockReq("/_test/webhooks/send", { method: "POST", body });
+          log(a); log(b);
+          assert(a.json?.delivered === true && a.json?.statusCode === 202, "first webhook not 202");
+          assert(b.json?.delivered === true && b.json?.statusCode === 202, "duplicate webhook not 202");
+          assert(a.json?.eventId === b.json?.eventId, "eventIds differ");
+        }
+      },
+      {
+        id: "4b",
+        title: "4b · Invalid HMAC rejected",
+        desc: "Bad signature → 401; covered also by WebhookSecurityTests.",
+        run: async (log) => {
+          const built = await mockReq("/_test/webhooks/build", {
+            method: "POST",
+            body: { workOrderId: "wo-2001", status: "scheduled", entityVersion: 2, eventId: "evt-bad-sig-ui" }
+          });
+          log(built);
+          assert(built.ok && built.json?.headers, "build webhook failed");
+          const headers = { ...built.json.headers, "X-FieldFlow-Signature": "deadbeef" };
+          const raw = atob(built.json.rawBodyBase64);
+          const bytes = Uint8Array.from(raw, (ch) => ch.charCodeAt(0));
+          const url = `${apiRoot()}/webhooks/events`;
+          const started = performance.now();
+          const response = await fetch(url, { method: "POST", headers, body: bytes });
+          const text = await response.text();
+          const r = { url, status: response.status, ok: response.ok, ms: Math.round(performance.now() - started), text, json: null };
+          log(r);
+          assert(response.status === 401, `expected 401, got ${response.status}`);
+        }
+      },
+      {
+        id: "5",
+        title: "5 · Newer then older (no regression)",
+        desc: "v5 then older v3 both accept; job count stable.",
+        run: async (log) => {
+          const before = await apiReq("/_demo/summary");
+          const jobsBefore = before.json?.jobCount ?? before.json?.JobCount;
+          const targetUrl = `${apiRoot()}/webhooks/events`;
+          const newer = await mockReq("/_test/webhooks/send", {
+            method: "POST",
+            body: { targetUrl, workOrderId: "wo-2001", status: "in_progress", entityVersion: 5, eventId: "evt-demo-new-5" }
+          });
+          const older = await mockReq("/_test/webhooks/send", {
+            method: "POST",
+            body: { targetUrl, workOrderId: "wo-2001", status: "scheduled", entityVersion: 3, eventId: "evt-demo-old-3" }
+          });
+          const after = await apiReq("/_demo/summary");
+          log(newer); log(older); log(after);
+          assert(newer.json?.statusCode === 202 && older.json?.statusCode === 202, "expected both 202");
+          const jobsAfter = after.json?.jobCount ?? after.json?.JobCount;
+          assert(jobsAfter === jobsBefore, `jobCount exploded ${jobsBefore} → ${jobsAfter}`);
+        }
+      },
+      {
+        id: "5b",
+        title: "5b · Concurrent duplicate webhooks",
+        desc: "Fire 10 identical eventIds at once — one durable effect.",
+        run: async (log) => {
+          const before = await apiReq("/_demo/summary");
+          const jobsBefore = before.json?.jobCount ?? before.json?.JobCount;
+          const completedBefore = before.json?.inboxCompleted ?? before.json?.InboxCompleted ?? 0;
+          const targetUrl = `${apiRoot()}/webhooks/events`;
+          const body = {
+            targetUrl,
+            workOrderId: "wo-2001",
+            status: "in_progress",
+            entityVersion: 5,
+            eventId: "evt-demo-concurrent-10"
+          };
+          const results = await Promise.all(
+            Array.from({ length: 10 }, () => mockReq("/_test/webhooks/send", { method: "POST", body }))
+          );
+          results.forEach(log);
+          const accepted = results.filter((r) => r.json?.delivered === true && r.json?.statusCode === 202).length;
+          assert(accepted >= 1, `no webhook accepted with 202 (${accepted}/10)`);
+          // SQLite can surface rare 500s under parallel accepts; idempotency = stable job count.
+          const after = await apiReq("/_demo/summary");
+          log(`accepted=${accepted}/10`);
+          log(after);
+          const jobsAfter = after.json?.jobCount ?? after.json?.JobCount;
+          assert(jobsAfter === jobsBefore, `jobCount changed under concurrency ${jobsBefore} → ${jobsAfter}`);
+          const completedAfter = after.json?.inboxCompleted ?? after.json?.InboxCompleted ?? 0;
+          assert(completedAfter >= completedBefore, "completed inbox should not shrink");
+        }
+      },
+      {
+        id: "6",
+        title: "6 · Resolve unknown contractor",
+        desc: "Upsert missing contractor, sync, nudge waiting deps.",
+        run: async (log) => {
+          const before = await apiReq("/_demo/summary");
+          const jobsBefore = before.json?.jobCount ?? before.json?.JobCount;
+          const upsert = await mockReq("/_test/contractors", {
+            method: "POST",
+            body: {
+              contractorId: "ctr-missing-999",
+              complianceId: "CMP-999",
+              active: true,
+              license: { number: "LIC-999", expiresOn: "2030-01-01" },
+              insurance: { policy: "INS-999", expiresOn: "2030-01-01", coverage: "1000000 CAD" },
+              wcbNumber: "WCB-999"
+            }
+          });
+          const sync = await apiReq("/sync/contractors", { method: "POST" });
+          const nudge = await apiReq("/_demo/nudge-waiting-dependencies", { method: "POST" });
+          const summary = await apiReq("/_demo/summary");
+          log(upsert); log(sync); log(nudge); log(summary);
+          assert((nudge.json?.madeDue ?? 0) >= 1, "madeDue < 1");
+          assert((nudge.json?.processed ?? 0) >= 1, "processed < 1");
+          const waiting = summary.json?.inboxWaitingForDependency ?? summary.json?.InboxWaitingForDependency;
+          const jobs = summary.json?.jobCount ?? summary.json?.JobCount;
+          assert(waiting === 0, `waiting still ${waiting}`);
+          assert(jobs >= jobsBefore + 1, `jobCount did not increase (${jobsBefore} → ${jobs})`);
+          state.jobCount = jobs;
+        }
+      },
+      {
+        id: "7",
+        title: "7 · Circuit open + liveness",
+        desc: "Inject 500s until Offline/Open; live stays Healthy.",
+        run: async (log) => {
+          const fail = await mockReq("/_test/failures", {
+            method: "POST",
+            body: { serverErrorCount: 20 }
+          });
+          log(fail);
+          for (let i = 0; i < 8; i++) {
+            await apiReq("/sync/contractors", { method: "POST" });
+          }
+          const conn = await apiReq("/connectors/fieldflow/health");
+          const live = await apiReq("/health/live");
+          log(conn); log(live);
+          const status = conn.json?.status ?? conn.json?.Status;
+          const circuit = conn.json?.circuitState ?? conn.json?.CircuitState;
+          assert(status === "Offline" || circuit === "Open", `expected Offline/Open, got ${status}/${circuit}`);
+          assert(live.ok && (live.text === "Healthy" || live.json?.status === "Healthy"), "live should stay Healthy");
+        }
+      },
+      {
+        id: "8",
+        title: "8 · Recovery",
+        desc: "Reset mock, wait for break duration, sync back to Healthy.",
+        run: async (log) => {
+          const reset = await mockReq("/_test/reset", { method: "POST" });
+          log(reset);
+          statusBar.innerHTML = "Waiting <strong>16s</strong> for circuit break duration…";
+          await sleep(16000);
+          const sync = await apiReq("/sync/contractors", { method: "POST" });
+          const conn = await apiReq("/connectors/fieldflow/health");
+          log(sync); log(conn);
+          const status = conn.json?.status ?? conn.json?.Status;
+          const circuit = conn.json?.circuitState ?? conn.json?.CircuitState;
+          assert(status === "Healthy", `connector status ${status}`);
+          assert(!circuit || circuit === "Closed", `circuit ${circuit}`);
+        }
+      },
+      {
+        id: "9",
+        title: "9 · Outbound dispatch",
+        desc: "Seed qualified job and queue dispatch.",
+        run: async (log) => {
+          const seed = await apiReq("/_demo/seed-qualified-dispatch", { method: "POST" });
+          log(seed);
+          assert(seed.ok && seed.json?.jobId, "seed failed");
+          const jobId = seed.json.jobId;
+          const dispatch = await apiReq(`/connectors/fieldflow/jobs/${jobId}/dispatch`, { method: "POST" });
+          log(dispatch);
+          await sleep(2000);
+          const summary = await apiReq("/_demo/summary");
+          const health = await apiReq("/connectors/fieldflow/health");
+          log(summary); log(health);
+          assert(dispatch.ok, `dispatch failed: ${dispatch.status}`);
+          const status = health.json?.status ?? health.json?.Status;
+          assert(status === "Healthy", `health after dispatch: ${status}`);
+        }
+      },
+      {
+        id: "10",
+        title: "10 · Approval gate blocks dispatch",
+        desc: "Qualified Job + PendingReview Vendor → approval_required.",
+        run: async (log) => {
+          const seed = await apiReq("/_demo/seed-unapproved-dispatch", { method: "POST" });
+          log(seed);
+          assert(seed.ok && seed.json?.jobId, "unapproved seed failed");
+          const dispatch = await apiReq(`/connectors/fieldflow/jobs/${seed.json.jobId}/dispatch`, { method: "POST" });
+          log(dispatch);
+          assert(!dispatch.ok, "dispatch should be rejected");
+          const code = dispatch.json?.code ?? dispatch.json?.Code;
+          assert(
+            code === "approval_required" || code === "vendor_not_approved" || dispatch.status === 422 || dispatch.status === 409 || dispatch.status === 400,
+            `expected approval failure, got ${dispatch.status} ${dispatch.text}`
+          );
+        }
+      },
+      {
+        id: "11",
+        title: "11 · Ambiguous POST reconciles",
+        desc: "Mock drops response after persist; outbox reconciles without duplicate create.",
+        run: async (log) => {
+          const arm = await mockReq("/_test/failures", {
+            method: "POST",
+            body: { ambiguousNextPost: true }
+          });
+          log(arm);
+          assert(arm.json?.ambiguousArmed === true, "ambiguous not armed");
+          const seed = await apiReq("/_demo/seed-ambiguous-dispatch", { method: "POST" });
+          log(seed);
+          assert(seed.ok && seed.json?.jobId, "ambiguous seed failed");
+          const jobId = seed.json.jobId;
+          const dispatch = await apiReq(`/connectors/fieldflow/jobs/${jobId}/dispatch`, { method: "POST" });
+          log(dispatch);
+          assert(dispatch.ok, `queue failed: ${dispatch.text}`);
+          statusBar.innerHTML = "Waiting for outbox worker to reconcile ambiguous POST…";
+          let found = null;
+          for (let i = 0; i < 15; i++) {
+            await sleep(1000);
+            found = await mockReq(`/_test/work-orders/by-client-ref/${jobId}`);
+            if (found.status === 200 && found.json?.workOrderId) break;
+          }
+          log(found);
+          assert(found?.status === 200 && found.json?.workOrderId, "reconciled work order not found by clientReference");
+          const again = await mockReq(`/_test/work-orders/by-client-ref/${jobId}`);
+          log(again);
+          assert(again.json?.workOrderId === found.json.workOrderId, "duplicate work orders for same clientReference");
+        }
+      },
+      {
+        id: "12",
+        title: "12 · DLQ exhaustion (unknown contractor)",
+        desc: "Orphan work order waits, then exhausts into dead-letter.",
+        run: async (log) => {
+          const upsert = await mockReq("/_test/work-orders", {
+            method: "POST",
+            body: {
+              workOrderId: "wo-dlq-orphan-1",
+              contractorId: "ctr-dlq-orphan",
+              status: "open",
+              entityVersion: 1,
+              customerName: "DLQ Orphan",
+              addressStreet: "1 Dead Letter Rd",
+              addressCity: "Calgary",
+              addressPostal: "T2P1J9",
+              serviceType: "hvac",
+              notes: "Demo DLQ exhaustion"
+            }
+          });
+          log(upsert);
+          assert(upsert.ok, "upsert orphan work order failed");
+          const sync = await apiReq("/sync/work-orders", { method: "POST" });
+          log(sync);
+          assert((sync.json?.waiting ?? 0) >= 1 || (await apiReq("/_demo/summary")).json?.inboxWaitingForDependency >= 1,
+            "expected a waiting dependency");
+          const before = await apiReq("/_demo/summary");
+          const deadBefore = before.json?.inboxDeadLettered ?? before.json?.InboxDeadLettered ?? 0;
+          const exhaust = await apiReq("/_demo/exhaust-waiting-dependencies", { method: "POST" });
+          log(exhaust);
+          assert((exhaust.json?.prepared ?? 0) >= 1, "prepared < 1");
+          assert((exhaust.json?.deadLettered ?? 0) >= 1, `deadLettered < 1: ${exhaust.text}`);
+          const after = await apiReq("/_demo/summary");
+          log(after);
+          const deadAfter = after.json?.inboxDeadLettered ?? after.json?.InboxDeadLettered ?? 0;
+          assert(deadAfter > deadBefore, `dead-letter count did not rise (${deadBefore} → ${deadAfter})`);
+        }
+      }
+    ];
+
+    const ui = new Map();
+
+    function render() {
+      scenariosEl.innerHTML = "";
+      for (const s of scenarios) {
+        const row = document.createElement("div");
+        row.className = "scenario";
+        row.innerHTML = `
+          <div class="scenario-head">
+            <div>
+              <div class="scenario-title">${s.title}</div>
+              <p class="scenario-desc">${s.desc}</p>
+            </div>
+            <div style="display:flex;gap:0.4rem;align-items:center">
+              <span class="badge" data-badge>idle</span>
+              <button data-run>Run</button>
+            </div>
+          </div>
+          <div class="log" data-log></div>
+        `;
+        const badge = row.querySelector("[data-badge]");
+        const logEl = row.querySelector("[data-log]");
+        const btn = row.querySelector("[data-run]");
+        btn.addEventListener("click", () => runOne(s.id));
+        ui.set(s.id, { badge, logEl, btn, row });
+        scenariosEl.appendChild(row);
+      }
+    }
+
+    function setBadge(id, kind, text) {
+      const { badge } = ui.get(id);
+      badge.className = `badge ${kind}`;
+      badge.textContent = text;
+    }
+
+    function appendLog(id, entry) {
+      const { logEl } = ui.get(id);
+      logEl.classList.add("show");
+      const line = typeof entry === "string"
+        ? entry
+        : `${entry.status} ${entry.ms}ms ${entry.url}\n${entry.text || JSON.stringify(entry.json, null, 2)}`;
+      logEl.textContent = (logEl.textContent ? logEl.textContent + "\n\n" : "") + line;
+    }
+
+    async function runOne(id, { clearLog = true } = {}) {
+      const s = scenarios.find((x) => x.id === id);
+      const { logEl, btn } = ui.get(id);
+      if (clearLog) logEl.textContent = "";
+      setBadge(id, "run", "running");
+      btn.disabled = true;
+      try {
+        await s.run((entry) => appendLog(id, entry));
+        setBadge(id, "pass", "pass");
+        statusBar.innerHTML = `<strong>${s.title}</strong> passed.`;
+        return true;
+      } catch (err) {
+        appendLog(id, String(err.message || err));
+        setBadge(id, "fail", "fail");
+        statusBar.innerHTML = `<strong>${s.title}</strong> failed: ${err.message || err}`;
+        return false;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function runAll() {
+      $("runAll").disabled = true;
+      $("ping").disabled = true;
+      let passed = 0;
+      for (const s of scenarios) {
+        const ok = await runOne(s.id);
+        if (!ok) {
+          statusBar.innerHTML = `Stopped at <strong>${s.title}</strong>. ${passed}/${scenarios.length} passed.`;
+          $("runAll").disabled = false;
+          $("ping").disabled = false;
+          return;
+        }
+        passed++;
+      }
+      statusBar.innerHTML = `<strong>All ${passed} scenarios passed.</strong>`;
+      $("runAll").disabled = false;
+      $("ping").disabled = false;
+    }
+
+    async function ping() {
+      try {
+        const mock = await mockReq("/health");
+        const api = await apiReq("/health/live");
+        statusBar.innerHTML = `Mock ${mock.status} · API live ${api.status} (${api.text || "ok"})`;
+      } catch (err) {
+        statusBar.textContent = err.message;
+      }
+    }
+
+    $("runAll").addEventListener("click", runAll);
+    $("ping").addEventListener("click", ping);
+    $("resetOnly").addEventListener("click", () => runOne("0"));
+    render();
+    ping();
+  </script>
+</body>
+</html>

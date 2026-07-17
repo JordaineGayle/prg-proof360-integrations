@@ -9,6 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<FieldFlowMockOptions>(builder.Configuration.GetSection(FieldFlowMockOptions.SectionName));
 builder.Services.AddSingleton<MockStore>();
 builder.Services.AddHttpClient("webhook-demo");
+builder.Services.AddCors();
 builder.Services.Configure<FormOptions>(options =>
 {
     options.MultipartBodyLengthLimit = builder.Configuration.GetSection(FieldFlowMockOptions.SectionName)
@@ -22,6 +23,9 @@ builder.WebHost.ConfigureKestrel(options =>
 });
 
 var app = builder.Build();
+
+// Local scenario-runner page (API :5203) calls mock /_test from the browser.
+app.UseCors(policy => policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
 
 app.UseMiddleware<ApiKeyMiddleware>();
 app.UseMiddleware<FailureInjectionMiddleware>();

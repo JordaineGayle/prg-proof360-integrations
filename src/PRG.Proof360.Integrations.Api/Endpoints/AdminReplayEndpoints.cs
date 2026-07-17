@@ -66,7 +66,9 @@ public static class AdminReplayEndpoints
                     new { inboxMessageId = complete.InboxMessageId, status = "already_complete" }),
                 _ => Results.Ok(outcome)
             });
-        });
+        })
+        .WithTags("Admin")
+        .WithSummary("Replay a dead-lettered inbox message (operator-gated)");
 
         return endpoints;
     }

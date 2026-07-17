@@ -336,4 +336,34 @@ internal sealed class IntegrationStore : IIntegrationStore
 
         return waiting.Count;
     }
+
+    /// <inheritdoc />
+    public async Task<int> PrepareWaitingDependenciesForExhaustionAsync(
+        string providerInstanceId,
+        int maxAttempts,
+        DateTimeOffset utcNow,
+        CancellationToken cancellationToken = default)
+    {
+        var waiting = await _dbContext.InboxMessages
+            .Where(x => x.ProviderInstanceId == providerInstanceId)
+            .Where(x => x.State == InboxMessageStates.WaitingForDependency)
+            .ToListAsync(cancellationToken);
+
+        var budget = Math.Max(1, maxAttempts);
+        foreach (var message in waiting)
+        {
+            // Next claim increments AttemptCount; land on MaxAttempts so disposition exhausts.
+            message.AttemptCount = budget - 1;
+            message.State = InboxMessageStates.Pending;
+            message.NextAttemptAt = utcNow.AddSeconds(-1);
+            message.RowVersion += 1;
+        }
+
+        if (waiting.Count > 0)
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        return waiting.Count;
+    }
 }

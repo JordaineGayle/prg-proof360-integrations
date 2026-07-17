@@ -19,14 +19,14 @@ public static class HealthEndpoints
         endpoints.MapHealthChecks("/health/live", new HealthCheckOptions
         {
             Predicate = static _ => false
-        });
+        }).WithTags("Health");
 
         // Readiness: local dependencies (e.g. SQLite) are initialized.
         // FieldFlow outage does not fail readiness — work can still be queued durably.
         endpoints.MapHealthChecks("/health/ready", new HealthCheckOptions
         {
             Predicate = static check => check.Tags.Contains("ready")
-        });
+        }).WithTags("Health");
 
         endpoints.MapGet("/connectors/fieldflow/health", async (
                 GetConnectorHealthHandler handler,
@@ -35,7 +35,9 @@ public static class HealthEndpoints
                 var snapshot = await handler.HandleAsync(cancellationToken);
                 return Results.Json(snapshot);
             })
-            .WithName("GetFieldFlowConnectorHealth");
+            .WithName("GetFieldFlowConnectorHealth")
+            .WithTags("Health")
+            .WithSummary("FieldFlow connector health (circuit, backlog, freshness)");
 
         return endpoints;
     }

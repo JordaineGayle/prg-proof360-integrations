@@ -114,4 +114,13 @@ public interface IIntegrationStore
         string providerInstanceId,
         DateTimeOffset utcNow,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Demo helper: bumps waiting-dependency messages to the final attempt budget so the next process can dead-letter them.
+    /// </summary>
+    Task<int> PrepareWaitingDependenciesForExhaustionAsync(
+        string providerInstanceId,
+        int maxAttempts,
+        DateTimeOffset utcNow,
+        CancellationToken cancellationToken = default);
 }

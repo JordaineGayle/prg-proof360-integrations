@@ -37,6 +37,19 @@ public static class TestControlEndpoints
             return Results.Ok(new { upserted = true, contractorId = saved.ContractorId });
         });
 
+        group.MapPost("/work-orders", (WorkOrderDto workOrder, MockStore store) =>
+        {
+            if (string.IsNullOrWhiteSpace(workOrder.WorkOrderId))
+            {
+                return Results.Json(
+                    new ErrorResponse { Code = "work_order_id_required", Message = "workOrderId is required." },
+                    statusCode: 400);
+            }
+
+            var saved = store.UpsertWorkOrder(workOrder);
+            return Results.Ok(new { upserted = true, workOrderId = saved.WorkOrderId });
+        });
+
         group.MapPost("/failures", (FailureInjectionRequest request, MockStore store) =>
         {
             store.Failures.Configure(request);

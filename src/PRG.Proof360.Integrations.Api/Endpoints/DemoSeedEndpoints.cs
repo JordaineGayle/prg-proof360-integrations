@@ -1,6 +1,9 @@
+using Microsoft.EntityFrameworkCore;
 using PRG.Proof360.Integrations.Api.Errors;
 using PRG.Proof360.Integrations.Application.Demo;
 using PRG.Proof360.Integrations.Application.Dispatch;
+using PRG.Proof360.Integrations.FieldFlow.Resilience;
+using PRG.Proof360.Integrations.Infrastructure.Persistence;
 
 namespace PRG.Proof360.Integrations.Api.Endpoints;
 
@@ -12,7 +15,33 @@ public static class DemoSeedEndpoints
     /// <summary>Maps demo seed routes.</summary>
     public static IEndpointRouteBuilder MapDemoSeedEndpoints(this IEndpointRouteBuilder endpoints)
     {
+        endpoints.MapPost("/_demo/reset-local-state", async (
+            ConnectorDbContext db,
+            FieldFlowResilienceState resilience,
+            CancellationToken cancellationToken) =>
+        {
+            // Clear durable demo state left by prior scenario runs (DLQ, backlog → Degraded).
+            var deleted = new
+            {
+                audit = await db.AuditEvents.ExecuteDeleteAsync(cancellationToken),
+                outbox = await db.OutboxMessages.ExecuteDeleteAsync(cancellationToken),
+                inbox = await db.InboxMessages.ExecuteDeleteAsync(cancellationToken),
+                identity = await db.ProviderIdentityLinks.ExecuteDeleteAsync(cancellationToken),
+                transcripts = await db.Transcripts.ExecuteDeleteAsync(cancellationToken),
+                jobs = await db.Jobs.ExecuteDeleteAsync(cancellationToken),
+                vendors = await db.Vendors.ExecuteDeleteAsync(cancellationToken),
+                connectorState = await db.ConnectorStates.ExecuteDeleteAsync(cancellationToken)
+            };
+
+            resilience.Reset();
+
+            return Results.Ok(new { reset = true, deleted });
+        })
+        .WithTags("Demo")
+        .WithSummary("Clear local SQLite connector state + process resilience projection");
+
         endpoints.MapPost("/_demo/seed-qualified-dispatch", async (
+
             SeedQualifiedDispatchDemoHandler handler,
             HttpContext http,
             CancellationToken cancellationToken) =>

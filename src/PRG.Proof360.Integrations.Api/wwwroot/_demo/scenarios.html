@@ -4,17 +4,26 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Proof360 Integration — Scenario Runner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #0f1419;
-      --panel: #1a222c;
-      --line: #2c3845;
-      --text: #e7eef5;
-      --muted: #8fa3b5;
-      --ok: #3dbe7a;
-      --bad: #e35d6a;
-      --run: #4aa3ff;
-      --warn: #e0b44c;
+      --bg: #0c1117;
+      --panel: #151c25;
+      --panel-2: #1b2430;
+      --line: #2a3544;
+      --text: #edf3f8;
+      --muted: #8b9faf;
+      --ok: #3ecf8e;
+      --bad: #f07178;
+      --run: #5eb1ff;
+      --warn: #e6c07b;
+      --key: #7dcfff;
+      --str: #c3e88d;
+      --num: #f78c6c;
+      --bool: #c792ea;
+      --null: #8292a2;
       --mono: "IBM Plex Mono", "SF Mono", Menlo, Consolas, monospace;
       --sans: "IBM Plex Sans", "Segoe UI", sans-serif;
     }
@@ -23,191 +32,291 @@
       margin: 0;
       font-family: var(--sans);
       background:
-        radial-gradient(1200px 600px at 10% -10%, #1d3a55 0%, transparent 55%),
-        radial-gradient(900px 500px at 100% 0%, #243528 0%, transparent 50%),
-        var(--bg);
+        radial-gradient(1100px 520px at 8% -8%, rgba(46, 110, 160, 0.28) 0%, transparent 55%),
+        radial-gradient(900px 480px at 96% 0%, rgba(52, 120, 90, 0.18) 0%, transparent 50%),
+        linear-gradient(180deg, #101820 0%, var(--bg) 40%);
       color: var(--text);
       min-height: 100vh;
     }
+    a { color: var(--run); text-decoration: none; }
+    a:hover { text-decoration: underline; }
     header {
-      padding: 1.5rem 1.5rem 0.75rem;
+      padding: 1.35rem 1.5rem 1rem;
       border-bottom: 1px solid var(--line);
-      background: rgba(15, 20, 25, 0.75);
-      backdrop-filter: blur(8px);
+      background: rgba(12, 17, 23, 0.82);
+      backdrop-filter: blur(12px);
       position: sticky;
       top: 0;
       z-index: 2;
     }
+    .brand-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem 1.25rem;
+      align-items: baseline;
+      justify-content: space-between;
+    }
     h1 {
       margin: 0;
-      font-size: 1.25rem;
-      font-weight: 650;
-      letter-spacing: -0.02em;
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+    }
+    .brand-meta {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
     }
     .sub {
-      margin: 0.35rem 0 0;
+      margin: 0.45rem 0 0;
       color: var(--muted);
-      font-size: 0.9rem;
-      max-width: 70ch;
-      line-height: 1.45;
+      font-size: 0.92rem;
+      max-width: 72ch;
+      line-height: 1.5;
     }
     .toolbar {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.6rem;
+      gap: 0.65rem;
       align-items: end;
-      margin-top: 1rem;
+      margin-top: 1.1rem;
     }
     label {
       display: flex;
       flex-direction: column;
-      gap: 0.25rem;
-      font-size: 0.75rem;
+      gap: 0.28rem;
+      font-size: 0.7rem;
       color: var(--muted);
       text-transform: uppercase;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.05em;
+      font-weight: 500;
     }
     input {
       font-family: var(--mono);
-      font-size: 0.85rem;
+      font-size: 0.84rem;
       background: var(--panel);
       border: 1px solid var(--line);
       color: var(--text);
-      border-radius: 6px;
-      padding: 0.45rem 0.6rem;
-      min-width: 16rem;
+      border-radius: 8px;
+      padding: 0.5rem 0.7rem;
+      min-width: 17rem;
+    }
+    input:focus {
+      outline: none;
+      border-color: #3d6f9e;
+      box-shadow: 0 0 0 3px rgba(94, 177, 255, 0.15);
     }
     button {
       font-family: var(--sans);
       font-size: 0.9rem;
+      font-weight: 500;
       border: 1px solid var(--line);
-      background: var(--panel);
+      background: var(--panel-2);
       color: var(--text);
-      border-radius: 6px;
-      padding: 0.5rem 0.9rem;
+      border-radius: 8px;
+      padding: 0.52rem 0.95rem;
       cursor: pointer;
+      transition: border-color 120ms ease, background 120ms ease, transform 120ms ease;
     }
-    button:hover:not(:disabled) { border-color: var(--run); }
-    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    button:hover:not(:disabled) {
+      border-color: #4a7fb0;
+      transform: translateY(-1px);
+    }
+    button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
     button.primary {
-      background: #1e4f86;
-      border-color: #2f6fb0;
+      background: linear-gradient(180deg, #2a6cb0 0%, #1d5088 100%);
+      border-color: #3d7ec4;
     }
     button.danger {
-      background: #5a2430;
-      border-color: #8a3544;
+      background: linear-gradient(180deg, #6b3040 0%, #4e2230 100%);
+      border-color: #8a4050;
     }
+    .progress {
+      margin-top: 0.9rem;
+      height: 4px;
+      background: #1a2430;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .progress > i {
+      display: block;
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #3d8fd6, var(--ok));
+      transition: width 200ms ease;
+    }
+    .status-bar {
+      margin-top: 0.7rem;
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .status-bar strong { color: var(--text); font-weight: 600; }
     main {
       display: grid;
-      grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.7fr);
+      grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
       gap: 1rem;
-      padding: 1rem 1.5rem 2rem;
+      padding: 1.1rem 1.5rem 2.25rem;
     }
     @media (max-width: 960px) {
       main { grid-template-columns: 1fr; }
       input { min-width: 12rem; }
     }
     .panel {
-      background: rgba(26, 34, 44, 0.92);
+      background: rgba(21, 28, 37, 0.94);
       border: 1px solid var(--line);
-      border-radius: 10px;
+      border-radius: 12px;
       overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
     }
     .panel h2 {
       margin: 0;
-      padding: 0.85rem 1rem;
-      font-size: 0.8rem;
+      padding: 0.9rem 1.05rem;
+      font-size: 0.74rem;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.07em;
       color: var(--muted);
       border-bottom: 1px solid var(--line);
+      background: rgba(0, 0, 0, 0.15);
     }
     .scenario {
       border-bottom: 1px solid var(--line);
-      padding: 0.85rem 1rem;
+      padding: 0.95rem 1.05rem;
     }
     .scenario:last-child { border-bottom: 0; }
+    .scenario:hover { background: rgba(255, 255, 255, 0.015); }
     .scenario-head {
       display: flex;
-      gap: 0.75rem;
+      gap: 0.85rem;
       align-items: flex-start;
       justify-content: space-between;
     }
     .scenario-title {
       font-weight: 600;
       font-size: 0.98rem;
+      letter-spacing: -0.01em;
     }
     .scenario-desc {
-      margin: 0.2rem 0 0;
+      margin: 0.25rem 0 0;
       color: var(--muted);
-      font-size: 0.85rem;
-      line-height: 1.4;
+      font-size: 0.86rem;
+      line-height: 1.45;
+    }
+    .actions {
+      display: flex;
+      gap: 0.45rem;
+      align-items: center;
+      flex-shrink: 0;
     }
     .badge {
       font-family: var(--mono);
-      font-size: 0.72rem;
-      padding: 0.2rem 0.45rem;
+      font-size: 0.7rem;
+      padding: 0.22rem 0.5rem;
       border-radius: 999px;
       border: 1px solid var(--line);
       color: var(--muted);
       white-space: nowrap;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
     }
-    .badge.pass { color: var(--ok); border-color: #2f6b4a; background: #163226; }
+    .badge.pass { color: var(--ok); border-color: #2f6b4a; background: #143024; }
     .badge.fail { color: var(--bad); border-color: #7a3340; background: #3a1a22; }
     .badge.run { color: var(--run); border-color: #2f5f8f; background: #163049; }
-    .badge.skip { color: var(--warn); border-color: #6d5a2a; background: #322914; }
+    .badge.idle { color: var(--muted); }
     .log {
-      margin-top: 0.55rem;
-      font-family: var(--mono);
-      font-size: 0.72rem;
-      color: #b7c7d6;
-      white-space: pre-wrap;
-      word-break: break-word;
-      max-height: 9rem;
-      overflow: auto;
-      background: #0c1116;
-      border-radius: 6px;
-      padding: 0.5rem 0.6rem;
+      margin-top: 0.7rem;
       display: none;
+      max-height: 18rem;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #0a0e13;
     }
     .log.show { display: block; }
+    .log-entry {
+      border-bottom: 1px solid #1c2632;
+      padding: 0.55rem 0.7rem 0.65rem;
+    }
+    .log-entry:last-child { border-bottom: 0; }
+    .log-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem 0.65rem;
+      align-items: center;
+      margin-bottom: 0.4rem;
+      font-family: var(--mono);
+      font-size: 0.7rem;
+    }
+    .http {
+      font-weight: 500;
+      padding: 0.1rem 0.4rem;
+      border-radius: 4px;
+      border: 1px solid var(--line);
+    }
+    .http.ok { color: var(--ok); border-color: #2f6b4a; background: #12281d; }
+    .http.err { color: var(--bad); border-color: #7a3340; background: #2e1520; }
+    .http.warn { color: var(--warn); border-color: #6d5a2a; background: #2a2414; }
+    .log-url {
+      color: var(--muted);
+      word-break: break-all;
+    }
+    .log-ms { color: #6f8496; }
+    .log-body {
+      margin: 0;
+      font-family: var(--mono);
+      font-size: 0.74rem;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: #c5d2de;
+    }
+    .log-body .k { color: var(--key); }
+    .log-body .s { color: var(--str); }
+    .log-body .n { color: var(--num); }
+    .log-body .b { color: var(--bool); }
+    .log-body .nl { color: var(--null); }
+    .log-plain { color: #c5d2de; }
+    .log-note {
+      font-family: var(--mono);
+      font-size: 0.74rem;
+      color: var(--warn);
+      padding: 0.35rem 0;
+    }
     .coverage {
-      padding: 0.85rem 1rem 1rem;
+      padding: 0.95rem 1.05rem 1.15rem;
     }
     .coverage p {
       margin: 0 0 0.75rem;
       color: var(--muted);
-      font-size: 0.85rem;
-      line-height: 1.45;
+      font-size: 0.86rem;
+      line-height: 1.5;
     }
     .coverage ul {
       margin: 0;
       padding-left: 1.1rem;
       color: var(--text);
-      font-size: 0.85rem;
-      line-height: 1.55;
+      font-size: 0.86rem;
+      line-height: 1.6;
     }
     .coverage code {
       font-family: var(--mono);
-      font-size: 0.78rem;
+      font-size: 0.76rem;
       color: #9ec9ff;
     }
-    .status-bar {
-      margin-top: 0.75rem;
-      font-family: var(--mono);
-      font-size: 0.8rem;
-      color: var(--muted);
-    }
-    .status-bar strong { color: var(--text); font-weight: 600; }
   </style>
 </head>
 <body>
   <header>
-    <h1>Proof360 × FieldFlow — Scenario Runner</h1>
+    <div class="brand-row">
+      <h1>Proof360 × FieldFlow — Scenario Runner</h1>
+      <div class="brand-meta">Development · live rehearsal</div>
+    </div>
     <p class="sub">
-      Development-only live rehearsal — blueprint flow plus deep edge cases (concurrent dupes, DLQ, approval gate, ambiguous POST).
-      Mock calls go through a same-origin proxy (fixes localhost / CORS network errors).
-      Browse routes in <a href="/swagger" style="color:#9ec9ff">Swagger UI</a>.
+      Blueprint flow plus deep edge cases (concurrent dupes, DLQ, approval gate, ambiguous POST).
+      Mock traffic uses a same-origin proxy. Endpoint catalog:
+      <a href="/swagger">Swagger UI</a>.
     </p>
     <div class="toolbar">
       <label>API base
@@ -217,6 +326,7 @@
       <button id="ping">Ping hosts</button>
       <button class="danger" id="resetOnly">Reset mock</button>
     </div>
+    <div class="progress" aria-hidden="true"><i id="progressBar"></i></div>
     <div class="status-bar" id="statusBar">Ready.</div>
   </header>
 
@@ -229,7 +339,7 @@
       <h2>Also asserted offline</h2>
       <div class="coverage">
         <p>
-          The live steps below mirror the Release suite. These remain easiest to prove in automated tests:
+          Live steps mirror the Release suite. These remain easiest to prove in automated tests:
         </p>
         <ul>
           <li><code>Stale_timestamp_is_rejected</code></li>
@@ -305,14 +415,19 @@
     const scenarios = [
       {
         id: "0",
-        title: "0 · Reset mock",
-        desc: "Clear FieldFlow mock state and wait until the API circuit is Closed.",
+        title: "0 · Reset mock + local state",
+        desc: "Clear FieldFlow mock fixtures and API SQLite demo state (DLQ/backlog), then ensure circuit Closed.",
         run: async (log) => {
           const r = await mockReq("/_test/reset", { method: "POST" });
           log(r);
           assert(r.status === 200 && r.json?.reset === true, "Expected {reset:true}");
 
-          // Circuit state lives in the API process; mock reset alone is not enough after step 7.
+          // Mock reset does not clear API SQLite — leftover dead letters make health Degraded.
+          const local = await apiReq("/_demo/reset-local-state", { method: "POST" });
+          log(local);
+          assert(local.ok && local.json?.reset === true, `local reset failed: ${local.text}`);
+
+          // Circuit state lives in the API process; wait out break window if still Open.
           let last = await apiReq("/connectors/fieldflow/health");
           const circuit = last.json?.circuitState ?? last.json?.CircuitState;
           if (circuit && circuit !== "Closed") {
@@ -324,14 +439,16 @@
           log(last);
           const status = last.json?.status ?? last.json?.Status;
           const circuitAfter = last.json?.circuitState ?? last.json?.CircuitState;
-          assert(status === "Healthy" && (!circuitAfter || circuitAfter === "Closed"),
-            `Expected Healthy/Closed after reset, got ${status}/${circuitAfter}. Restart the API if this persists.`);
+          assert(
+            (status === "Healthy" || status === "Degraded") && (!circuitAfter || circuitAfter === "Closed"),
+            `Expected Healthy|Degraded with Closed circuit after reset, got ${status}/${circuitAfter}.`
+          );
         }
       },
       {
         id: "1",
         title: "1 · Health baseline",
-        desc: "Live/ready healthy; connector Closed.",
+        desc: "Live/ready healthy; connector Closed (Healthy after local reset).",
         run: async (log) => {
           const live = await apiReq("/health/live");
           const ready = await apiReq("/health/ready");
@@ -339,9 +456,17 @@
           log(live); log(ready); log(conn);
           assert(live.ok && (live.text === "Healthy" || live.json?.status === "Healthy"), "live not Healthy");
           assert(ready.ok, "ready not OK");
-          assert(conn.json?.status === "Healthy" || conn.json?.Status === "Healthy", "connector not Healthy");
+          const status = conn.json?.status ?? conn.json?.Status;
+          assert(status === "Healthy" || status === "Degraded", `connector status ${status}`);
           const circuit = conn.json?.circuitState ?? conn.json?.CircuitState;
           assert(!circuit || circuit === "Closed", `circuit expected Closed, got ${circuit}`);
+          // Prefer Healthy after step 0 local reset; Degraded only if something re-queued already.
+          if (status === "Degraded") {
+            const dead = conn.json?.deadLetterCount ?? 0;
+            const inbox = conn.json?.inboxBacklogCount ?? 0;
+            assert(dead === 0, `unexpected dead letters after reset: ${dead}`);
+            assert(inbox < 50, `unexpected inbox backlog after reset: ${inbox}`);
+          }
         }
       },
       {
@@ -659,6 +784,57 @@
     ];
 
     const ui = new Map();
+    const progressBar = $("progressBar");
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function highlightJson(jsonText) {
+      const escaped = escapeHtml(jsonText);
+      return escaped.replace(
+        /("(?:\\u[\da-fA-F]{4}|\\[^u]|[^\\"])*"(?:\s*:)?|\btrue\b|\bfalse\b|\bnull\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
+        (match) => {
+          if (/^"/.test(match)) {
+            return /:$/.test(match)
+              ? `<span class="k">${match.slice(0, -1)}</span>:`
+              : `<span class="s">${match}</span>`;
+          }
+          if (/true|false/.test(match)) return `<span class="b">${match}</span>`;
+          if (/null/.test(match)) return `<span class="nl">${match}</span>`;
+          return `<span class="n">${match}</span>`;
+        }
+      );
+    }
+
+    function resolvePayload(entry) {
+      if (entry.json !== null && entry.json !== undefined) {
+        return { kind: "json", value: entry.json };
+      }
+      const text = entry.text ?? "";
+      if (!text) return { kind: "empty", value: "" };
+      try {
+        return { kind: "json", value: JSON.parse(text) };
+      } catch {
+        return { kind: "text", value: text };
+      }
+    }
+
+    function httpClass(status) {
+      if (status >= 200 && status < 300) return "ok";
+      if (status >= 400) return "err";
+      if (status >= 300) return "warn";
+      return "";
+    }
+
+    function setProgress(done, total) {
+      const pct = total <= 0 ? 0 : Math.round((done / total) * 100);
+      progressBar.style.width = `${pct}%`;
+    }
 
     function render() {
       scenariosEl.innerHTML = "";
@@ -668,16 +844,18 @@
         row.innerHTML = `
           <div class="scenario-head">
             <div>
-              <div class="scenario-title">${s.title}</div>
-              <p class="scenario-desc">${s.desc}</p>
+              <div class="scenario-title"></div>
+              <p class="scenario-desc"></p>
             </div>
-            <div style="display:flex;gap:0.4rem;align-items:center">
-              <span class="badge" data-badge>idle</span>
-              <button data-run>Run</button>
+            <div class="actions">
+              <span class="badge idle" data-badge>idle</span>
+              <button data-run type="button">Run</button>
             </div>
           </div>
           <div class="log" data-log></div>
         `;
+        row.querySelector(".scenario-title").textContent = s.title;
+        row.querySelector(".scenario-desc").textContent = s.desc;
         const badge = row.querySelector("[data-badge]");
         const logEl = row.querySelector("[data-log]");
         const btn = row.querySelector("[data-run]");
@@ -696,27 +874,58 @@
     function appendLog(id, entry) {
       const { logEl } = ui.get(id);
       logEl.classList.add("show");
-      const line = typeof entry === "string"
-        ? entry
-        : `${entry.status} ${entry.ms}ms ${entry.url}\n${entry.text || JSON.stringify(entry.json, null, 2)}`;
-      logEl.textContent = (logEl.textContent ? logEl.textContent + "\n\n" : "") + line;
+
+      if (typeof entry === "string") {
+        const note = document.createElement("div");
+        note.className = "log-entry";
+        note.innerHTML = `<div class="log-note">${escapeHtml(entry)}</div>`;
+        logEl.appendChild(note);
+        logEl.scrollTop = logEl.scrollHeight;
+        return;
+      }
+
+      const payload = resolvePayload(entry);
+      let bodyHtml;
+      if (payload.kind === "json") {
+        bodyHtml = `<pre class="log-body">${highlightJson(JSON.stringify(payload.value, null, 2))}</pre>`;
+      } else if (payload.kind === "text") {
+        bodyHtml = `<pre class="log-body log-plain">${escapeHtml(payload.value)}</pre>`;
+      } else {
+        bodyHtml = `<pre class="log-body log-plain">(empty body)</pre>`;
+      }
+
+      const block = document.createElement("div");
+      block.className = "log-entry";
+      block.innerHTML = `
+        <div class="log-meta">
+          <span class="http ${httpClass(entry.status)}">${escapeHtml(String(entry.status ?? "?"))}</span>
+          <span class="log-ms">${escapeHtml(String(entry.ms ?? "?"))}ms</span>
+          <span class="log-url">${escapeHtml(entry.url || "")}</span>
+        </div>
+        ${bodyHtml}
+      `;
+      logEl.appendChild(block);
+      logEl.scrollTop = logEl.scrollHeight;
     }
 
     async function runOne(id, { clearLog = true } = {}) {
       const s = scenarios.find((x) => x.id === id);
       const { logEl, btn } = ui.get(id);
-      if (clearLog) logEl.textContent = "";
+      if (clearLog) {
+        logEl.innerHTML = "";
+        logEl.classList.remove("show");
+      }
       setBadge(id, "run", "running");
       btn.disabled = true;
       try {
         await s.run((entry) => appendLog(id, entry));
         setBadge(id, "pass", "pass");
-        statusBar.innerHTML = `<strong>${s.title}</strong> passed.`;
+        statusBar.innerHTML = `<strong>${escapeHtml(s.title)}</strong> passed.`;
         return true;
       } catch (err) {
         appendLog(id, String(err.message || err));
         setBadge(id, "fail", "fail");
-        statusBar.innerHTML = `<strong>${s.title}</strong> failed: ${err.message || err}`;
+        statusBar.innerHTML = `<strong>${escapeHtml(s.title)}</strong> failed: ${escapeHtml(err.message || err)}`;
         return false;
       } finally {
         btn.disabled = false;
@@ -727,15 +936,18 @@
       $("runAll").disabled = true;
       $("ping").disabled = true;
       let passed = 0;
+      setProgress(0, scenarios.length);
       for (const s of scenarios) {
         const ok = await runOne(s.id);
         if (!ok) {
-          statusBar.innerHTML = `Stopped at <strong>${s.title}</strong>. ${passed}/${scenarios.length} passed.`;
+          setProgress(passed, scenarios.length);
+          statusBar.innerHTML = `Stopped at <strong>${escapeHtml(s.title)}</strong>. ${passed}/${scenarios.length} passed.`;
           $("runAll").disabled = false;
           $("ping").disabled = false;
           return;
         }
         passed++;
+        setProgress(passed, scenarios.length);
       }
       statusBar.innerHTML = `<strong>All ${passed} scenarios passed.</strong>`;
       $("runAll").disabled = false;

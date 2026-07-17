@@ -48,6 +48,10 @@ dotnet run --project src/PRG.FieldFlow.Mock --launch-profile http
 dotnet run --project src/PRG.Proof360.Integrations.Api --launch-profile http
 ```
 
+**Manual walkthrough (Development):** open [http://127.0.0.1:5203/_demo/scenarios](http://127.0.0.1:5203/_demo/scenarios) and click **Run all scenarios**.  
+**Swagger:** [http://127.0.0.1:5203/swagger](http://127.0.0.1:5203/swagger)  
+**Submission README:** `docs/packages/03_README.md` (setup, tests, curl alternatives).
+
 Health checks:
 
 - Process: `GET /health/live` (ignores FieldFlow), `GET /health/ready` (SQLite only)

@@ -66,14 +66,110 @@ Key docs: `docs/architecture/architecture.md` (source of `01_Architecture.pdf`),
 
 - .NET SDK **10.0.100+** (`global.json` uses `rollForward: latestFeature`)  
 - macOS/Linux/Windows with network loopback  
+- A browser (for Swagger + the scenario runner)  
 - Optional: Google Chrome (only if regenerating PDFs via `scripts/render-submission-pdfs.mjs`)  
 - No Docker, PostgreSQL, or live FieldFlow credentials  
 
 ---
 
+## Quick start (setup)
+
+From `02_Prototype/` (this solution root):
+
+### 1) Restore and build
+
+```bash
+dotnet restore
+dotnet build --configuration Release
+```
+
+### 2) Run automated tests (unit + integration + resilience + architecture)
+
+```bash
+dotnet test --configuration Release
+```
+
+Expect **196** passing tests across four projects:
+
+| Project | What it proves |
+|---|---|
+| `PRG.Proof360.Integrations.UnitTests` | Policies, mappers, disposition, HMAC verifier, eligibility |
+| `PRG.Proof360.Integrations.IntegrationTests` | Inbox/outbox, webhooks, sync, DLQ/replay, dispatch, uniqueness |
+| `PRG.Proof360.Integrations.ResilienceTests` | Retry, circuit, rate-limit, NeedsAttention, health |
+| `PRG.Proof360.Integrations.ArchitectureTests` | Canonical boundaries, DTO isolation, project graph |
+
+TRX evidence (optional):
+
+```bash
+mkdir -p artifacts/test-results
+dotnet test --configuration Release --no-build \
+  --results-directory artifacts/test-results \
+  --logger "trx;LogFilePrefix=prg-tests"
+```
+
+Traceability: `docs/assignment/requirements-traceability.md`.
+
+### 3) Start hosts (two terminals)
+
+Launch profiles set `Development` and matching `replace-me` secrets:
+
+```bash
+# Terminal A — FieldFlow mock (:5210)
+dotnet run --project src/PRG.FieldFlow.Mock --launch-profile http
+
+# Terminal B — Connector API (:5203)
+dotnet run --project src/PRG.Proof360.Integrations.Api --launch-profile http
+```
+
+Smoke check:
+
+```bash
+curl -s http://127.0.0.1:5210/health
+curl -s http://127.0.0.1:5203/health/live
+```
+
+Prefer **`http://127.0.0.1`** in the browser (avoids localhost / IPv6 bind quirks). Demo helpers, Swagger, and the scenario runner require Development (provided by the launch profile).
+
+---
+
+## Manual run-through (recommended): scenario webpage
+
+With both hosts running, open:
+
+**http://127.0.0.1:5203/_demo/scenarios**
+
+Click **Run all scenarios**. The page drives the live connector + mock through pass/fail checks (same-origin mock proxy — no CORS fiddling).
+
+Covered live:
+
+| Step | Behavior |
+|---|---|
+| Reset + health | Mock reset; connector Healthy / circuit Closed |
+| Healthy sync | Contractors + work orders; unknown contractor waits |
+| Idempotent repeat | Re-sync does not grow Vendor/Job counts |
+| Webhook + duplicate | Same `eventId` → both `202` |
+| Invalid HMAC | Bad signature → `401`, no mutation |
+| Newer then older | Version ordering; no status regression |
+| Concurrent duplicates | Parallel identical webhooks; stable job count |
+| Resolve dependency | Upsert missing contractor → waiting clears |
+| Circuit open + liveness | Offline/Open while `/health/live` stays Healthy |
+| Recovery | Break duration → Healthy/Closed again |
+| Outbound dispatch | Seed qualified Job → queue outbox dispatch |
+| Approval gate | PendingReview Vendor blocks dispatch |
+| Ambiguous POST | Dropped response → reconcile without duplicate create |
+| DLQ exhaustion | Unresolved dependency exhausts to dead-letter |
+
+Also open:
+
+- **Swagger (endpoint catalog):** http://127.0.0.1:5203/swagger  
+- Curl blueprint (optional): `docs/assignment/manual-test-blueprint.md`  
+- One-shot script: `./scripts/run-demo.sh`
+
+---
+
 ## Configuration (placeholders only)
 
-Copy `.env.example` or set environment variables / user-secrets. **Never commit real secrets.**
+Copy `.env.example` or set environment variables / user-secrets. **Never commit real secrets.** Launch profiles already set matching `replace-me` values for local demo.
 
 | Name | Example | Role |
 |---|---|---|
@@ -91,94 +187,51 @@ Copy `.env.example` or set environment variables / user-secrets. **Never commit 
 | `AdminReplay__Enabled` | `true` (Development) | Local replay gate |
 | `AdminReplay__OperatorToken` | _(empty in Dev)_ | Optional token gate |
 
-Launch profiles already set matching `replace-me` values for local demo.
-
 ---
 
-## Commands (rehearsed)
-
-### Restore / format / build / test
-
-```bash
-dotnet restore
-dotnet format
-dotnet format --verify-no-changes
-dotnet build --configuration Release --no-restore
-mkdir -p artifacts/test-results
-dotnet test --configuration Release --no-build \
-  --results-directory artifacts/test-results \
-  --logger "trx;LogFilePrefix=prg-tests"
-```
-
-### Database / migrations
-
-Development applies migrations on API startup when configured. Manual:
-
-```bash
-dotnet ef migrations add <Name> \
-  --project src/PRG.Proof360.Integrations.Infrastructure \
-  --startup-project src/PRG.Proof360.Integrations.Infrastructure \
-  --output-dir Persistence/Migrations
-```
-
-### Run mock + connector
-
-Use launch profiles (sets Development + matching `replace-me` secrets). Run each in its own terminal from `02_Prototype/`:
-
-```bash
-dotnet run --project src/PRG.FieldFlow.Mock --launch-profile http
-dotnet run --project src/PRG.Proof360.Integrations.Api --launch-profile http
-```
-
-Demo seed and admin replay require `ASPNETCORE_ENVIRONMENT=Development` (provided by the API launch profile).
-
-### Demo sequence
+## Optional curl demo sequence
 
 ```bash
 # Health
-curl -s http://localhost:5210/health
-curl -s http://localhost:5203/health/live
-curl -s http://localhost:5203/health/ready
-curl -s http://localhost:5203/connectors/fieldflow/health
+curl -s http://127.0.0.1:5210/health
+curl -s http://127.0.0.1:5203/health/live
+curl -s http://127.0.0.1:5203/health/ready
+curl -s http://127.0.0.1:5203/connectors/fieldflow/health
 
 # Inbound (contractors first)
-curl -s -X POST http://localhost:5203/sync/contractors
-curl -s -X POST http://localhost:5203/sync/work-orders
+curl -s -X POST http://127.0.0.1:5203/sync/contractors
+curl -s -X POST http://127.0.0.1:5203/sync/work-orders
 
 # Webhook (mock signs with shared secret). Reuse eventId to prove duplicate idempotency.
-curl -s -X POST http://localhost:5210/_test/webhooks/send \
+curl -s -X POST http://127.0.0.1:5210/_test/webhooks/send \
   -H 'Content-Type: application/json' \
-  -d '{"targetUrl":"http://localhost:5203/webhooks/events","workOrderId":"wo-2001","status":"scheduled","entityVersion":2,"eventId":"evt-demo-dup-1"}'
-curl -s -X POST http://localhost:5210/_test/webhooks/send \
+  -d '{"targetUrl":"http://127.0.0.1:5203/webhooks/events","workOrderId":"wo-2001","status":"scheduled","entityVersion":2,"eventId":"evt-demo-dup-1"}'
+curl -s -X POST http://127.0.0.1:5210/_test/webhooks/send \
   -H 'Content-Type: application/json' \
-  -d '{"targetUrl":"http://localhost:5203/webhooks/events","workOrderId":"wo-2001","status":"scheduled","entityVersion":2,"eventId":"evt-demo-dup-1"}'
+  -d '{"targetUrl":"http://127.0.0.1:5203/webhooks/events","workOrderId":"wo-2001","status":"scheduled","entityVersion":2,"eventId":"evt-demo-dup-1"}'
 
 # Outbound
-curl -s -X POST http://localhost:5203/_demo/seed-qualified-dispatch
-curl -s -X POST http://localhost:5203/connectors/fieldflow/jobs/22222222-2222-2222-2222-222222222222/dispatch
+curl -s -X POST http://127.0.0.1:5203/_demo/seed-qualified-dispatch
+curl -s -X POST http://127.0.0.1:5203/connectors/fieldflow/jobs/22222222-2222-2222-2222-222222222222/dispatch
 ```
 
-### Reset
+Reset:
 
 ```bash
-curl -s -X POST http://localhost:5210/_test/reset
+curl -s -X POST http://127.0.0.1:5210/_test/reset
 # Optional: stop API and delete local SQLite file (e.g. connector.dev.db)
 ```
-
-### Regenerate submission PDFs (optional)
-
-```bash
-node scripts/render-submission-pdfs.mjs
-```
-
-Outputs under `docs/packages/`.
 
 ---
 
 ## Endpoints
 
-**Interactive catalog (Development):** open [http://localhost:5203/swagger](http://localhost:5203/swagger)  
-**Scenario runner:** [http://localhost:5203/_demo/scenarios](http://localhost:5203/_demo/scenarios)
+| Surface | URL |
+|---|---|
+| Scenario runner (manual walkthrough) | http://127.0.0.1:5203/_demo/scenarios |
+| Swagger / OpenAPI UI | http://127.0.0.1:5203/swagger |
+| API | http://127.0.0.1:5203 |
+| Mock | http://127.0.0.1:5210 |
 
 | Method | Path | Notes |
 |---|---|---|
@@ -190,15 +243,21 @@ Outputs under `docs/packages/`.
 | POST | `/webhooks/events` | HMAC webhook intake (`202`) |
 | POST | `/connectors/fieldflow/jobs/{jobId}/dispatch` | Queue outbox dispatch |
 | POST | `/_demo/seed-qualified-dispatch` | Dev seed only |
+| POST | `/_demo/seed-unapproved-dispatch` | Dev approval-gate seed |
+| POST | `/_demo/seed-ambiguous-dispatch` | Dev ambiguous-POST seed |
+| POST | `/_demo/exhaust-waiting-dependencies` | Dev DLQ exhaustion helper |
+| GET | `/_demo/summary` | Dev sanitized counts |
 | POST | `/admin/inbox/{id}/replay` | Dev / gated replay |
 | GET | mock `/health` | Mock health |
 | POST | mock `/_test/reset` | Reset fixtures |
-| POST | mock `/_test/failures` | Inject 429/500/timeout |
+| POST | mock `/_test/failures` | Inject 429/500/timeout/ambiguous |
 | POST | mock `/_test/webhooks/send` | Signed webhook helper |
 
 ---
 
 ## How to trigger failure / edge scenarios
+
+Prefer the **scenario webpage** above. Equivalent controls:
 
 | Scenario | How |
 |---|---|
@@ -209,6 +268,9 @@ Outputs under `docs/packages/`.
 | **Out-of-order** | Send higher `entityVersion` then lower; older ignored |
 | **Unknown optional field** | Fixture includes additive JSON; observed, not stored canonically |
 | **Unknown contractor** | Sync work order whose contractor is absent → waiting dependency |
+| **DLQ exhaustion** | Scenario runner step 12, or `POST /_demo/exhaust-waiting-dependencies` |
+| **Approval gate** | `POST /_demo/seed-unapproved-dispatch` then dispatch |
+| **Ambiguous POST** | Arm `ambiguousNextPost`, seed + dispatch; reconcile by client reference |
 | **Circuit open** | Sustained 5xx via injection until health shows Offline/Open |
 | **Recovery** | Clear failures / wait break duration; half-open probe succeeds |
 

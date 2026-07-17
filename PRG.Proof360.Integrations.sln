@@ -1,0 +1,16 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PRG.Proof360.Integrations.Api", "PRG.Proof360.Integrations.Api\PRG.Proof360.Integrations.Api.csproj", "{DDCCFF81-80BF-4E78-BE89-F29EF9B423FF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DDCCFF81-80BF-4E78-BE89-F29EF9B423FF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DDCCFF81-80BF-4E78-BE89-F29EF9B423FF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DDCCFF81-80BF-4E78-BE89-F29EF9B423FF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DDCCFF81-80BF-4E78-BE89-F29EF9B423FF}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

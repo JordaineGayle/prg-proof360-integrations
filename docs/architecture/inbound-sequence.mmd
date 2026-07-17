@@ -1,0 +1,54 @@
+%% Inbound sync: poll/webhook → durable inbox → shared apply path
+%% HTTP never runs inside a canonical DB transaction.
+%% flowchart for IDE Mermaid preview compatibility.
+
+flowchart TD
+    startWh([POST /webhooks/events]) --> raw[Read raw body once + size limit]
+    raw --> verify{HMAC + skew + instance}
+    verify -->|invalid| auditBad[Sanitized webhook.verify audit]
+    auditBad --> reject401([401 Problem Details])
+    verify -->|valid| normalize[FieldFlow normalizer / reconcile GET if no version]
+    normalize --> receiveWh[ReceiveProviderEvent]
+
+    startPoll([Poll worker / POST /sync]) --> http[Provider HTTP List]
+    http --> noteHttp{{Provider I/O outside any DB TX}}
+    noteHttp --> receivePoll[ReceiveProviderEvent synthetic event id]
+
+    subgraph receipt [Receipt TX]
+        receiveWh --> insert[INSERT InboxMessage Pending<br/>unique instance + eventId]
+        receivePoll --> insert
+        insert -->|unique conflict| dup[Duplicate - 202 idempotent]
+        insert -->|inserted| accepted[Accepted - 202]
+        dup --> commitRecv[Commit before process]
+        accepted --> commitRecv
+    end
+
+    commitRecv --> claim
+
+    subgraph claimTx [Claim TX]
+        claim[ProcessInboxMessage: claim next] --> lease[SET Processing + RowVersion lease]
+        lease --> claimed{Claimed?}
+        claimed -->|no| idle([Idle])
+    end
+
+    claimed -->|yes| deser[Deserialize snapshot - no HTTP]
+    deser --> apply[ApplyContractor / ApplyWorkOrder]
+
+    subgraph applyTx [Apply TX - single SaveChanges]
+        apply --> upsert[UPSERT Vendor/Job + identity + audit]
+        upsert --> outcome{Outcome}
+        outcome -->|ok| completed[Inbox Completed]
+        outcome -->|stale / equal hash| stale[ignored_stale]
+        outcome -->|equal version different hash| conflict[version_payload_conflict]
+        outcome -->|missing contractor| waitDep[WaitingForDependency]
+        outcome -->|unsupported / malformed| dlq[DeadLetter]
+    end
+
+    completed --> moreBatch{More in batch?}
+    stale --> moreBatch
+    conflict --> moreBatch
+    waitDep --> moreBatch
+    dlq --> moreBatch
+    moreBatch -->|yes| claim
+    moreBatch -->|no| done([Done])
+    idle --> done

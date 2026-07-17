@@ -1,0 +1,48 @@
+---
+description: Typed Result, failure taxonomy, exception boundaries, and HTTP/worker mappings
+globs:
+  - "src/**/*.cs"
+  - "tests/**/*.cs"
+alwaysApply: false
+---
+
+# Typed error-handling rules
+
+## Result boundaries
+
+- Use `Result<TSuccess, TFailure>` for expected domain, validation, provider, and application failures.
+- Never use `Result<TSuccess, string>` or unstructured exception messages as behavior codes.
+- Use stable failure codes, safe messages, and structured metadata.
+- Model Duplicate, NoChange, IgnoredStale, and other correctly handled idempotent states as typed success outcomes.
+- Use `Unit` for successful operations with no value; do not return null.
+- Keep the Result primitive small: creation, Match, Map, Bind, and only exercised async helpers.
+- Do not add implicit conversions that hide success/failure construction.
+
+## Exceptions
+
+- Preserve caller cancellation; do not convert it to a failure result.
+- Throw for programmer defects and impossible internal states.
+- Translate expected provider/constraint outcomes at one responsible boundary.
+- Let unexpected exceptions reach one API/worker outer boundary for structured logging and sanitized handling.
+- Never add broad catch/log/rethrow blocks at every layer.
+- Never make retry decisions by matching exception-message text.
+
+## Failure classification
+
+- Keep domain failures independent of HTTP.
+- Provider ports return `ProviderFailure`; Application translates to `IntegrationFailure` or a durable worker disposition.
+- Centralize worker disposition: CompleteAsHandled, RetryAt, WaitForDependency, DeadLetter, or NeedsAttention.
+- Centralize RFC 7807 mapping in API.
+- Upstream provider rate limiting is not automatically the same as connector/client rate limiting.
+- Include Retry-After only when bounded and trustworthy.
+
+## Safety
+
+- Public errors contain a stable code, safe message, and correlation ID.
+- Never expose stack trace, exception type, SQL/connection details, raw provider body, credentials, signature, phone, email, or payload.
+- Audit safe classifications and hashes/references, not unsafe exception text.
+
+## Tests
+
+- Test Result behavior, every failure-to-disposition mapping, every failure-to-Problem-Details mapping, cancellation, unexpected exception boundaries, and redaction.
+- Assert duplicate/stale/no-change paths do not emit failure results.

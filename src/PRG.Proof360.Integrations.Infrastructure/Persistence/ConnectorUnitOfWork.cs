@@ -17,4 +17,7 @@ internal sealed class ConnectorUnitOfWork : IConnectorUnitOfWork
     /// <inheritdoc />
     public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         => _dbContext.SaveChangesAsync(cancellationToken);
+
+    /// <inheritdoc />
+    public void ClearTrackedChanges() => _dbContext.ChangeTracker.Clear();
 }

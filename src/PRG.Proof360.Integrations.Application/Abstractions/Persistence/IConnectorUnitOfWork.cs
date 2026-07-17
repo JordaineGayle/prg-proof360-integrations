@@ -1,13 +1,15 @@
 namespace PRG.Proof360.Integrations.Application.Abstractions.Persistence;
 
 /// <summary>
-/// Commits a unit of work spanning canonical and connector infrastructure changes.
-/// Does not expose <c>DbSet</c> surfaces to application use cases.
+/// Unit of work for connector persistence.
 /// </summary>
 public interface IConnectorUnitOfWork
 {
-    /// <summary>
-    /// Persists pending changes atomically.
-    /// </summary>
+    /// <summary>Persists staged changes.</summary>
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Discards tracked entity changes after a failed apply so disposition can update inbox alone.
+    /// </summary>
+    void ClearTrackedChanges();
 }

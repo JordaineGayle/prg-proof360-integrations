@@ -3,11 +3,11 @@
 Aligned with `00_MASTER_EXECUTION_PLAN.md` and kit prompts `00`–`12`.  
 Delivery semantics: **at-least-once + idempotent effects** (never exactly-once).
 
-## Current repository state (after Prompt 03)
+## Current repository state (after typed error model)
 
-- Modular monolith on **.NET 10** with canonical `Vendor`/`Job`/`Transcript`, policies, sidecar infrastructure models, EF Core SQLite + `InitialCreate` migration.
-- Local FieldFlow mock with assumed HTTP/webhook contract, deterministic `/_test` failure injection, and integration coverage.
-- Connector FieldFlow mapping + inbound/outbound workers still deferred (Prompt 04+).
+- Modular monolith on **.NET 10** with canonical models, FieldFlow mock, capability ports, ACL mappers, and SOT docs.
+- `Result<TSuccess, TFailure>`, `ProviderFailure`, `IntegrationFailure`, `FailureDispositionPolicy`, RFC 7807 Problem Details, and outer exception middleware.
+- Inbound/outbound workers still deferred (Prompt 05+).
 
 ## Phases, exit gates, and evidence
 

@@ -1,0 +1,38 @@
+%% Outbound qualified Job dispatch via transactional outbox
+%% HTTP never runs inside a canonical DB transaction.
+%% flowchart for IDE Mermaid preview compatibility.
+
+flowchart TD
+    api([POST /connectors/fieldflow/jobs/jobId/dispatch]) --> load[Re-read Job + Vendor]
+    load --> gate{Eligibility gate}
+    gate -->|fail| reject([Problem Details - approval/validation])
+    gate -->|ok| existing{Identity or outbox exists?}
+    existing -->|identity/completed| already([AlreadyDispatched])
+    existing -->|pending outbox| queuedAgain([AlreadyQueued])
+    existing -->|none| insert
+
+    subgraph outboxTx [Outbox TX - no HTTP]
+        insert[INSERT OutboxMessage Pending<br/>key fieldflow:instance:jobId:dispatch:v1]
+        insert --> audit[Audit dispatch.requested]
+        audit --> commit[Commit]
+    end
+
+    commit --> worker[Outbox worker / ProcessOutboxMessage]
+    worker --> claim[Claim Pending → Processing]
+    claim --> stashCheck{ResultReference set?}
+    stashCheck -->|yes| complete
+    stashCheck -->|no| http{{FieldFlow POST work-orders<br/>Idempotency-Key + clientReference}}
+
+    http -->|success| complete
+    http -->|ambiguous| reconcile[GET by clientReference]
+    reconcile -->|found| complete
+    reconcile -->|not found| retrySame[Retry later - SAME idempotency key]
+    http -->|transient| retrySame
+    http -->|validation/auth| dlq[DeadLetter / NeedsAttention]
+
+    subgraph completeTx [Complete TX]
+        complete[UPSERT work_order identity<br/>Job status → dispatched<br/>Outbox Completed + audit]
+    end
+
+    complete --> done([Done])
+    retrySame --> worker

@@ -44,10 +44,11 @@ dotnet run --project src/PRG.Proof360.Integrations.Api --launch-profile http
 
 Health checks:
 
-- Connector: `GET /health/live`, `GET /health/ready`
+- Process: `GET /health/live` (ignores FieldFlow), `GET /health/ready` (SQLite only)
+- Connector: `GET /connectors/fieldflow/health` (Healthy / Degraded / Offline / NeedsAttention)
 - Mock: `GET /health`
 
-Configuration placeholders: `.env.example` (never commit real secrets).
+Resilience: `docs/architecture/resilience.md`, ADR-007. Configuration placeholders: `.env.example` (never commit real secrets).
 
 ## FieldFlow mock (Prompt 03)
 
@@ -111,6 +112,71 @@ dotnet ef migrations add <Name> \
 
 See `docs/architecture/persistence.md`.
 
+## Mapping and source of truth (Prompt 04)
+
+- Capability ports: `docs/architecture/schema-mapping.md`
+- Field ownership / status tables: `docs/architecture/source-of-truth.md`
+- FieldFlow adapter DTOs are **not** shared with Application/Domain or the mock project
+
+## Typed errors (critical)
+
+- `Result<TSuccess, TFailure>` + `IntegrationFailure` / `ProviderFailure` / disposition policy: `docs/architecture/error-handling.md`
+- Cursor rule: `.cursor/rules/error-handling.mdc`
+- API: RFC 7807 via `ProblemDetailsMapper`; unexpected exceptions sanitized once at the outer boundary
+
+## Inbound sync (Prompt 05)
+
+Durable inbox + shared apply path for poll and webhooks. Sequence: `docs/architecture/inbound-sequence.mmd`. ADR: `docs/decisions/ADR-005-inbox-outbox-and-transaction-boundaries.md`.
+
+| Setting | Env / config |
+|---|---|
+| Enable background poller | `InboundSync__PollingEnabled` (default `false`) |
+| Poll interval (seconds) | `InboundSync__PollingIntervalSeconds` |
+| Max process batch | `InboundSync__MaxProcessBatch` |
+
+Manual sync (Application handlers only; no EF in endpoints):
+
+```bash
+# Requires Mock + API running and FieldFlow__BaseUrl pointing at the mock
+curl -X POST http://localhost:5203/sync/contractors
+curl -X POST http://localhost:5203/sync/work-orders
+```
+
+Recommended demo order: sync contractors first, then work orders (worker does the same). Background polling stays off unless you set `InboundSync__PollingEnabled=true`.
+
+## Webhooks (Prompt 06)
+
+`POST /webhooks/events` — verify HMAC over `{unixSeconds}.{rawBody}`, durable inbox receipt, `202` for accept/duplicate. Docs: `docs/architecture/webhooks.md`. Ordering ADR: `docs/decisions/ADR-006-status-ordering-and-reconciliation.md`.
+
+```bash
+# Mock helper signs with FieldFlowMock__WebhookHmacSecret (must match FieldFlow__WebhookHmacSecret)
+curl -s -X POST http://localhost:5210/_test/webhooks/send \
+  -H 'Content-Type: application/json' \
+  -d '{"targetUrl":"http://localhost:5203/webhooks/events","workOrderId":"wo-2001","status":"scheduled","entityVersion":2}'
+```
+
+Replay window: `FieldFlow__WebhookTimestampSkewSeconds` (default 300).
+
+## Outbound dispatch (Prompt 07)
+
+Transactional outbox for qualified Jobs. Docs: `docs/architecture/outbound-dispatch.md`, sequence `docs/architecture/outbound-sequence.mmd`.
+
+| Setting | Env / config |
+|---|---|
+| Enable outbox worker | `OutboundDispatch__WorkerEnabled` (default `false`; `true` in Development) |
+| Worker interval | `OutboundDispatch__WorkerIntervalSeconds` |
+| Max outbox attempts | `OutboundDispatch__MaxAttempts` |
+
+```bash
+# Development-only seed (approved Vendor + qualified Job)
+curl -X POST http://localhost:5203/_demo/seed-qualified-dispatch
+
+# Queue dispatch (no FieldFlow call in the request TX)
+curl -X POST http://localhost:5203/connectors/fieldflow/jobs/22222222-2222-2222-2222-222222222222/dispatch
+```
+
+Idempotency key: `fieldflow:{instance}:{jobId}:dispatch:v1`. Ambiguous POST reconciles by Job ID client reference before any retry (same key only).
+
 ## Current status
 
-Prompt 03 complete for the FieldFlow mock + assumed contract. Connector FieldFlow mapping, inbound/outbound workers remain deferred (Prompt 04+).
+Inbound sync/webhooks, outbound outbox dispatch, and FieldFlow HTTP resilience/circuit/health landed (Prompts 05–08). Audit/metrics hardening remains Prompt 09+.

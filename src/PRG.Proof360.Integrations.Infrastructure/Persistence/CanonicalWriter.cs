@@ -35,4 +35,12 @@ internal sealed class CanonicalWriter : ICanonicalWriter
     /// <inheritdoc />
     public Task<Job?> FindJobAsync(Guid jobId, CancellationToken cancellationToken = default)
         => _dbContext.Jobs.SingleOrDefaultAsync(x => x.JobId == jobId, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<int> CountVendorsAsync(CancellationToken cancellationToken = default)
+        => _dbContext.Vendors.CountAsync(cancellationToken);
+
+    /// <inheritdoc />
+    public Task<int> CountJobsAsync(CancellationToken cancellationToken = default)
+        => _dbContext.Jobs.CountAsync(cancellationToken);
 }
